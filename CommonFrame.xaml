@@ -1,0 +1,137 @@
+﻿<Window x:Class="TeachingPendant.CommonFrame"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:TeachingPendant"
+        mc:Ignorable="d"
+        Title="Teaching Pendant" Height="500" Width="700"
+        WindowStartupLocation="CenterScreen"
+        Background="LightGray">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- 상단 헤더 -->
+            <RowDefinition Height="*"/>
+            <!-- 메인 콘텐츠 영역 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 하단 버튼 영역 -->
+        </Grid.RowDefinitions>
+
+        <!-- 상단 헤더 영역 -->
+        <Grid Grid.Row="0" Margin="5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="Black" BorderThickness="1" Margin="1">
+                <Button x:Name="btnCurrentScreen" Content="Movement" Width="80" Height="25" 
+                        BorderThickness="0" Background="LightGray" />
+            </Border>
+
+            <Border Grid.Column="1" BorderBrush="Black" BorderThickness="1" Margin="1">
+                <TextBlock x:Name="txtAlarmMessage" Text="Alarm :" Padding="5,3,0,0"/>
+            </Border>
+
+            <!-- Manual/Auto/EMG 상태 표시 영역 -->
+            <Border Grid.Column="2" BorderBrush="Black" BorderThickness="1" Margin="1">
+                <StackPanel Orientation="Horizontal" Margin="3">
+                    <RadioButton x:Name="rbManual" Content="M" 
+                         GroupName="ModeGroup" 
+                         IsChecked="True" 
+                         Margin="2" 
+                         VerticalAlignment="Center"
+                         Click="rbManual_Click"/>
+                    <RadioButton x:Name="rbAuto" Content="A" 
+                         GroupName="ModeGroup" 
+                         Margin="2" 
+                         VerticalAlignment="Center"
+                         Click="rbAuto_Click"/>
+                    <RadioButton x:Name="rbEmg" Content="E" 
+                         GroupName="ModeGroup" 
+                         Margin="2" 
+                         VerticalAlignment="Center"
+                         Click="rbEmg_Click"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <ContentControl x:Name="MainContentArea" Grid.Row="1" Margin="5"/>
+
+        <!-- 하단 메뉴 버튼 영역 - 동적으로 변경됨 -->
+        <Grid x:Name="BottomButtonGrid" Grid.Row="2" Margin="5">
+            <!-- 이 영역은 코드에서 동적으로 생성됩니다 -->
+        </Grid>
+
+        <!-- 메뉴 오버레이 팝업 -->
+        <Grid x:Name="MenuOverlay" Visibility="Collapsed" Background="#80000000" Panel.ZIndex="1000">
+            <Border Background="LightGray" BorderBrush="Black" BorderThickness="2" 
+                    HorizontalAlignment="Center" VerticalAlignment="Center" 
+                    Width="400" Height="300">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 메뉴 제목 -->
+                    <TextBlock Grid.Row="0" Text="Menu Options" FontSize="16" FontWeight="Bold" 
+                               HorizontalAlignment="Center" Margin="0,0,0,15"/>
+
+                    <!-- 메뉴 버튼들 -->
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 왼쪽 열 -->
+                        <Button Grid.Row="0" Grid.Column="0" Content="Option" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuOption_Click"/>
+                        <Button Grid.Row="1" Grid.Column="0" Content="Mapping" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuMapping_Click"/>
+                        <Button Grid.Row="2" Grid.Column="0" Content="Setup" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuSetup_Click"/>
+                        <Button Grid.Row="3" Grid.Column="0" Content="Monitor" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuMonitor_Click"/>
+                        <Button Grid.Row="4" Grid.Column="0" Content="Teaching" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuTeaching_Click"/>
+                        <Button Grid.Row="5" Grid.Column="0" Content="Movement" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuMovement_Click"/>
+
+                        <!-- 오른쪽 열 -->
+                        <Button Grid.Row="0" Grid.Column="1" Content="Save" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuSave_Click"/>
+                        <Button Grid.Row="1" Grid.Column="1" Content="Load" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuLoad_Click"/>
+                        <Button Grid.Row="2" Grid.Column="1" Content="Jog" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuJog_Click"/>
+                        <Button Grid.Row="3" Grid.Column="1" Content="Jog Speed" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuJogSpeed_Click"/>
+                        <Button Grid.Row="4" Grid.Column="1" Content="Abs" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuAbs_Click"/>
+                        <Button Grid.Row="5" Grid.Column="1" Content="Total" Height="35" Margin="5" 
+                                BorderBrush="Gray" BorderThickness="1" Click="MenuTotal_Click"/>
+                    </Grid>
+
+                    <!-- 닫기 버튼 -->
+                    <Button Grid.Row="2" Content="Close" Width="80" Height="30" 
+                            HorizontalAlignment="Center" Margin="0,15,0,0"
+                            BorderBrush="Gray" BorderThickness="1" Click="MenuClose_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

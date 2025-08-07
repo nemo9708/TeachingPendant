@@ -1,0 +1,355 @@
+﻿<UserControl x:Class="TeachingPendant.RecipeSystem.UI.Views.RecipeEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="clr-namespace:TeachingPendant.RecipeSystem.UI.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="1000"
+             Background="LightGray">
+
+    <UserControl.Resources>
+        <converters:StepTypeToIconConverter x:Key="StepTypeToIconConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="5"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="5"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" BorderBrush="Gray" BorderThickness="1" Background="White">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="LightBlue" Padding="5">
+                    <TextBlock Text="Step Palette" FontWeight="Bold" HorizontalAlignment="Center"/>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="spStepPalette" Margin="5">
+
+                        <TextBlock Text="Basic Actions" FontWeight="Bold" Margin="0,5,0,3" Foreground="DarkBlue"/>
+
+                        <Button x:Name="btnAddHome" Content="🏠 Home" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="Home"
+                                ToolTip="Move to Home position" Background="LightCyan"
+                                FontWeight="SemiBold"/>
+
+                        <Button x:Name="btnAddMove" Content="➡️ Move" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="Move"
+                                ToolTip="Move to a specified location" Background="LightCyan"
+                                FontWeight="SemiBold"/>
+
+                        <Button x:Name="btnAddPick" Content="⬇️ Pick" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="Pick"
+                                ToolTip="Pick a wafer" Background="LightGreen"
+                                FontWeight="SemiBold"/>
+
+                        <Button x:Name="btnAddPlace" Content="⬆️ Place" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="Place"
+                                ToolTip="Place a wafer" Background="LightGreen"
+                                FontWeight="SemiBold"/>
+
+                        <TextBlock Text="Control &amp; Check" FontWeight="Bold" Margin="0,15,0,3" Foreground="DarkBlue"/>
+
+                        <Button x:Name="btnAddWait" Content="⏱️ Wait" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="Wait"
+                                ToolTip="Wait for a specified time" Background="LightYellow"
+                                FontWeight="SemiBold"/>
+
+                        <Button x:Name="btnAddCheckSafety" Content="🛡️ Safety" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddStep_Click" Tag="CheckSafety"
+                                ToolTip="Check safety status" Background="LightPink"
+                                FontWeight="SemiBold"/>
+
+                        <TextBlock Text="Quick Templates" FontWeight="Bold" Margin="0,15,0,3" Foreground="DarkBlue"/>
+
+                        <Button x:Name="btnAddPickSequence" Content="📋 Pick Sequence" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddTemplate_Click" Tag="PickSequence"
+                                ToolTip="Add a Pick → Move → Place sequence" Background="LightSalmon"
+                                FontWeight="SemiBold"/>
+
+                        <Button x:Name="btnAddSafetyCheck" Content="🔍 Safety Check" Height="35" Margin="0,2" 
+                                HorizontalAlignment="Stretch" Click="btnAddTemplate_Click" Tag="SafetySequence"
+                                ToolTip="Add a Safety Check → Wait sequence" Background="LightSalmon"
+                                FontWeight="SemiBold"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <Border Grid.Row="2" BorderBrush="Gray" BorderThickness="0,1,0,0" Background="LightYellow" Padding="5">
+                    <StackPanel>
+                        <TextBlock Text="Teaching Link" FontWeight="Bold" Margin="0,0,0,5"/>
+
+                        <TextBlock Text="Group:" Margin="0,2"/>
+                        <ComboBox x:Name="cmbTeachingGroup" Height="25" Margin="0,2"
+                                  SelectionChanged="cmbTeachingGroup_SelectionChanged"/>
+
+                        <TextBlock Text="Location:" Margin="0,2"/>
+                        <ComboBox x:Name="cmbTeachingLocation" Height="25" Margin="0,2"
+                                  SelectionChanged="cmbTeachingLocation_SelectionChanged"/>
+
+                        <Button x:Name="btnApplyTeaching" Content="Apply Coordinates" Height="25" Margin="0,5"
+                                Click="btnApplyTeaching_Click" IsEnabled="False"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" Background="Gray"/>
+
+        <Grid Grid.Column="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="LightGreen" Padding="5" Margin="0,0,0,5">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock Text="Recipe: " FontWeight="Bold"/>
+                        <TextBlock x:Name="txtRecipeName" Text="New Recipe" FontWeight="Bold"/>
+                        <TextBlock x:Name="txtModifiedIndicator" Text=" *" Foreground="Red" Visibility="Collapsed"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button x:Name="btnValidate" Content="Validate" Width="60" Height="25" Margin="5,0"
+                                Click="btnValidate_Click"/>
+                        <Button x:Name="btnSave" Content="Save" Width="60" Height="25" Margin="5,0"
+                                Click="btnSave_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="LightGray" Padding="5" BorderBrush="Gray" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="35"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="60"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="90"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="No." FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="1" Text="Type" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="2" Text="Description" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="3" Text="Teaching" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="4" Text="Coords (R,θ,Z)" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="5" Text="Speed %" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="6" Text="Active" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="7" Text="Actions" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="icStepList">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" 
+                                            Background="White" Padding="3,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="35"/>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="150"/>
+                                                <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="60"/>
+                                                <ColumnDefinition Width="50"/>
+                                                <ColumnDefinition Width="90"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" Text="{Binding StepNumber}" 
+                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       FontWeight="Bold" FontSize="12"/>
+
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                       FontWeight="Bold" FontSize="14">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0}">
+                                                        <Binding Path="Type" Converter="{StaticResource StepTypeToIconConverter}"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+
+                                            <TextBox Grid.Column="2" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" 
+                                                     VerticalAlignment="Center" Margin="3,0" BorderThickness="0" 
+                                                     Background="Transparent" FontWeight="SemiBold" FontSize="11"
+                                                     MouseDoubleClick="StepDescription_MouseDoubleClick"/>
+
+                                            <TextBlock Grid.Column="3" VerticalAlignment="Center" Margin="3,0" FontSize="10">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="{}{0}.{1}">
+                                                        <Binding Path="TeachingGroupName"/>
+                                                        <Binding Path="TeachingLocationName"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding TeachingGroupName}" Value="">
+                                                                <Setter Property="Text" Value="Manual Setting"/>
+                                                                <Setter Property="Foreground" Value="Gray"/>
+                                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <TextBlock Grid.Column="4" VerticalAlignment="Center" Margin="3,0" 
+                                                       FontSize="10" FontFamily="Consolas">
+                                                <TextBlock.Text>
+                                                    <MultiBinding StringFormat="R:{0:F0} θ:{1:F0} Z:{2:F0}">
+                                                        <Binding Path="TargetPosition.R"/>
+                                                        <Binding Path="TargetPosition.Theta"/>
+                                                        <Binding Path="TargetPosition.Z"/>
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding TargetPosition}" Value="{x:Null}">
+                                                                <Setter Property="Text" Value="No Coordinates"/>
+                                                                <Setter Property="Foreground" Value="Red"/>
+                                                                <Setter Property="FontStyle" Value="Italic"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <TextBox Grid.Column="5" Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}" 
+                                                     VerticalAlignment="Center" HorizontalAlignment="Center" 
+                                                     Width="45" TextAlignment="Center" FontWeight="SemiBold" FontSize="11"
+                                                     PreviewTextInput="SpeedTextBox_PreviewTextInput"/>
+
+                                            <CheckBox Grid.Column="6" IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
+                                                      VerticalAlignment="Center" HorizontalAlignment="Center"/>
+
+                                            <StackPanel Grid.Column="7" Orientation="Horizontal" 
+                                                        VerticalAlignment="Center" HorizontalAlignment="Center">
+                                                <Button Content="↑" Width="22" Height="22" Margin="1" 
+                                                        Click="btnMoveUp_Click" Tag="{Binding}" 
+                                                        ToolTip="Move Up" FontWeight="Bold" FontSize="10"/>
+                                                <Button Content="↓" Width="22" Height="22" Margin="1" 
+                                                        Click="btnMoveDown_Click" Tag="{Binding}" 
+                                                        ToolTip="Move Down" FontWeight="Bold" FontSize="10"/>
+                                                <Button Content="✖" Width="22" Height="22" Margin="1" 
+                                                        Click="btnDeleteStep_Click" Tag="{Binding}" 
+                                                        ToolTip="Delete" Background="LightCoral" FontWeight="Bold" FontSize="10"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Background="LightGray" Padding="5" Margin="0,5,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" x:Name="txtStepCount" Text="Total 0 steps" 
+                               VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="1" x:Name="txtEstimatedTime" Text="Est. Time: 0s" 
+                               VerticalAlignment="Center" HorizontalAlignment="Center" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" x:Name="txtValidationStatus" Text="Awaiting Validation" 
+                               VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <GridSplitter Grid.Column="3" Width="5" HorizontalAlignment="Stretch" Background="Gray"/>
+
+        <Border Grid.Column="4" BorderBrush="Gray" BorderThickness="1" Background="White">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="LightCoral" Padding="5">
+                    <TextBlock Text="Properties" FontWeight="Bold" HorizontalAlignment="Center" Foreground="White"/>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="spPropertyPanel" Margin="10">
+
+                        <TextBlock Text="Recipe Information" FontWeight="Bold" Margin="0,0,0,5"/>
+
+                        <TextBlock Text="Name:" Margin="0,5,0,2"/>
+                        <TextBox x:Name="txtRecipeNameEdit" Height="25" TextChanged="txtRecipeNameEdit_TextChanged"/>
+
+                        <TextBlock Text="Description:" Margin="0,5,0,2"/>
+                        <TextBox x:Name="txtRecipeDescriptionEdit" Height="60" TextWrapping="Wrap" AcceptsReturn="True"
+                                 TextChanged="txtRecipeDescriptionEdit_TextChanged"/>
+
+                        <TextBlock Text="Selected Step" FontWeight="Bold" Margin="0,20,0,5"/>
+
+                        <Grid x:Name="grdStepDetails" Visibility="Collapsed">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Type:" Margin="0,5,0,2"/>
+                            <TextBlock Grid.Row="1" x:Name="txtSelectedStepType" Background="LightGray" Padding="5" Height="25"/>
+
+                            <TextBlock Grid.Row="2" Text="Teaching Group:" Margin="0,5,0,2"/>
+                            <ComboBox Grid.Row="3" x:Name="cmbStepTeachingGroup" Height="25"/>
+
+                            <TextBlock Grid.Row="4" Text="Teaching Location:" Margin="0,5,0,2"/>
+                            <ComboBox Grid.Row="5" x:Name="cmbStepTeachingLocation" Height="25"/>
+                        </Grid>
+
+                        <TextBlock x:Name="txtNoStepSelected" Text="Select a step" 
+                                   Foreground="Gray" Margin="0,10" HorizontalAlignment="Center"/>
+
+                        <TextBlock Text="Templates" FontWeight="Bold" Margin="0,20,0,5"/>
+
+                        <Button x:Name="btnLoadTemplate" Content="Load Template" Height="30" Margin="0,5"
+                                Click="btnLoadTemplate_Click"/>
+
+                        <Button x:Name="btnSaveAsTemplate" Content="Save as Template" Height="30" Margin="0,5"
+                                Click="btnSaveAsTemplate_Click"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

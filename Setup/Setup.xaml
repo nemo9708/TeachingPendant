@@ -1,0 +1,144 @@
+﻿<UserControl x:Class="TeachingPendant.SetupUI.Setup"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:TeachingPendant.SetupUI"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             Background="WhiteSmoke">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,5,0">
+
+            <GroupBox Header="Home Position" FontWeight="Bold">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Position A(R) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtHomePosA" Grid.Row="0" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Position T(θ) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtHomePosT" Grid.Row="1" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Position Z :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtHomePosZ" Grid.Row="2" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <Button x:Name="btnApplyHomePos" Grid.Row="3" Grid.ColumnSpan="2" Content="Apply HomePos to All Movement P1" Margin="5" Click="ApplyHomePos_Click"/>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Software Limit" FontWeight="Bold" Margin="0,10,0,0">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Limit A(R) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtSoftLimitA1" Grid.Row="0" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="~" VerticalAlignment="Center" Margin="5,5,5,5"/>
+                    <TextBox x:Name="txtSoftLimitA2" Grid.Row="0" Grid.Column="3" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Limit T(θ) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtSoftLimitT1" Grid.Row="1" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" Text="~" VerticalAlignment="Center" Margin="5,5,5,5"/>
+                    <TextBox x:Name="txtSoftLimitT2" Grid.Row="1" Grid.Column="3" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Limit Z :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtSoftLimitZ1" Grid.Row="2" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text="~" VerticalAlignment="Center" Margin="5,5,5,5"/>
+                    <TextBox x:Name="txtSoftLimitZ2" Grid.Row="2" Grid.Column="3" Margin="5" VerticalContentAlignment="Center"/>
+                </Grid>
+            </GroupBox>
+
+        </StackPanel>
+
+        <StackPanel Grid.Row="0" Grid.Column="1" Margin="5,0,0,0">
+
+            <GroupBox Header="Mode Settings" FontWeight="Bold">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Demo Mode :" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="btnDemoModeOn" Content="ON" Width="50" Margin="2" Click="DemoModeOn_Click"/>
+                        <Button x:Name="btnDemoModeOff" Content="OFF" Width="50" Margin="2" Click="DemoModeOff_Click"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Use Interlock :" VerticalAlignment="Center" Margin="0,5,0,0"/>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,5,0,0">
+                        <Button x:Name="btnInterlockOn" Content="ON" Width="50" Margin="2" Click="InterlockOn_Click"/>
+                        <Button x:Name="btnInterlockOff" Content="OFF" Width="50" Margin="2" Click="InterlockOff_Click"/>
+                    </StackPanel>
+                </Grid>
+            </GroupBox>
+
+            <GroupBox Header="Parameter Settings" FontWeight="Bold" Margin="0,10,0,0">
+                <Grid Margin="5">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Retry Count :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtRetryCount" Grid.Row="0" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="System Speed (mm/s) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtSystemSpeed" Grid.Row="1" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Origin Offset T(θ) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtOriginOffsetTheta" Grid.Row="2" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Arm Link Length (L) :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBox x:Name="txtArmLinkLength" Grid.Row="3" Grid.Column="1" Margin="5" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Calculated Stroke Angle :" VerticalAlignment="Center" Margin="5"/>
+                    <TextBlock x:Name="txtCalculatedStrokeAngle" Grid.Row="4" Grid.Column="1" Text="-" VerticalAlignment="Center" Margin="5" FontWeight="Bold" Foreground="Blue"/>
+                </Grid>
+            </GroupBox>
+        </StackPanel>
+
+        <Border Grid.Row="1" Grid.ColumnSpan="2" BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="5">
+            <TextBlock x:Name="txtAramMessage" Text="Setup: All parameters are saved automatically." VerticalAlignment="Center" FontStyle="Italic" Foreground="Gray"/>
+        </Border>
+
+    </Grid>
+</UserControl>

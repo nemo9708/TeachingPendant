@@ -1,0 +1,123 @@
+{
+  "RecipeId": "af2cc3f4-6eaf-4278-b1fa-b3cd0adc854e",
+  "RecipeName": "사용자 정의 패턴",
+  "Description": "사용자가 편집할 수 있는 빈 템플릿",
+  "IsEnabled": true,
+  "Steps": [
+    {
+      "StepNumber": 1,
+      "Type": 3,
+      "Description": "홈 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.4018218+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 2,
+      "Type": 5,
+      "Description": "안전 상태 확인",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.4018218+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 3,
+      "Type": 0,
+      "Description": "사용자 정의 이동 1",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.4018218+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 4,
+      "Type": 0,
+      "Description": "사용자 정의 이동 2",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.4018218+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 5,
+      "Type": 3,
+      "Description": "완료 후 홈 복귀",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.4018218+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    }
+  ],
+  "Parameters": {
+    "DefaultSpeed": 50,
+    "PickSpeed": 30,
+    "PlaceSpeed": 30,
+    "HomeSpeed": 80,
+    "PickHeight": 5,
+    "PlaceHeight": 5,
+    "SafeHeight": 100,
+    "PickDelayMs": 500,
+    "PlaceDelayMs": 500,
+    "UseVacuum": true,
+    "CheckSafetyBeforeEachStep": true,
+    "PauseOnError": true,
+    "RetryCount": 3,
+    "RetryDelayMs": 1000
+  },
+  "CreatedDate": "2025-07-22T17:31:45.4018218+09:00",
+  "ModifiedDate": "2025-07-22T17:31:45.4018218+09:00",
+  "CreatedBy": "jun_jihan",
+  "Version": "1.0"
+}

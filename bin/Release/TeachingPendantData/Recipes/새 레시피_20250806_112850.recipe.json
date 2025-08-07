@@ -1,0 +1,218 @@
+{
+  "RecipeId": "f20cd21d-fc3b-49c5-b9e9-396a8a5eada9",
+  "RecipeName": "새 레시피",
+  "Description": "사용자 정의 레시피",
+  "IsEnabled": true,
+  "Steps": [
+    {
+      "StepNumber": 1,
+      "Type": 3,
+      "Description": "시작 - 홈 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:27:38.1012772+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 2,
+      "Type": 5,
+      "Description": "안전 상태 확인",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:27:38.1022777+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 3,
+      "Type": 0,
+      "Description": "지정 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:27:42.8414823+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 4,
+      "Type": 0,
+      "Description": "지정 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:27:52.7094027+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 5,
+      "Type": 0,
+      "Description": "지정 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:27:53.5123441+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 6,
+      "Type": 5,
+      "Description": "Safety Status Check",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:28:33.204141+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 7,
+      "Type": 4,
+      "Description": "Stabilization Wait",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 1.0,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:28:33.204141+09:00",
+      "WaitTimeMs": 2000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 8,
+      "Type": 1,
+      "Description": "Pick Wafer",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 30,
+      "EstimatedDuration": 4.4,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:28:34.2257289+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 9,
+      "Type": 0,
+      "Description": "Move to Target Position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:28:34.2257289+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 10,
+      "Type": 2,
+      "Description": "Place Wafer",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 30,
+      "EstimatedDuration": 4.4,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T11:28:34.2257289+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    }
+  ],
+  "Parameters": {
+    "DefaultSpeed": 50,
+    "PickSpeed": 30,
+    "PlaceSpeed": 30,
+    "HomeSpeed": 80,
+    "PickHeight": 5,
+    "PlaceHeight": 5,
+    "SafeHeight": 100,
+    "PickDelayMs": 500,
+    "PlaceDelayMs": 500,
+    "UseVacuum": true,
+    "CheckSafetyBeforeEachStep": true,
+    "PauseOnError": true,
+    "RetryCount": 3,
+    "RetryDelayMs": 1000
+  },
+  "CreatedDate": "2025-08-06T11:27:38.1003223+09:00",
+  "ModifiedDate": "2025-08-06T11:28:50.4428719+09:00",
+  "CreatedBy": "jun_jihan",
+  "Version": "1.0"
+}

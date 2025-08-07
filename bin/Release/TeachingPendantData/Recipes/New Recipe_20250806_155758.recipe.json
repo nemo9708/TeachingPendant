@@ -1,0 +1,180 @@
+{
+  "RecipeId": "95d7a075-e395-4c60-ba14-3797ed3cb31e",
+  "RecipeName": "New Recipe",
+  "Description": "Custom user recipe",
+  "IsEnabled": true,
+  "Steps": [
+    {
+      "StepNumber": 1,
+      "Type": 3,
+      "Description": "Start - Move to Home",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:13.3099302+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 2,
+      "Type": 5,
+      "Description": "Check safety status",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:13.310915+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 3,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:28.2041469+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 4,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:28.5483292+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 5,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:28.9802302+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 6,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:29.330933+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 7,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:29.7998999+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 8,
+      "Type": 0,
+      "Description": "Move to specified position",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 3.5,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-08-06T15:57:30.9683991+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    }
+  ],
+  "Parameters": {
+    "DefaultSpeed": 50,
+    "PickSpeed": 30,
+    "PlaceSpeed": 30,
+    "HomeSpeed": 80,
+    "PickHeight": 5,
+    "PlaceHeight": 5,
+    "SafeHeight": 100,
+    "PickDelayMs": 500,
+    "PlaceDelayMs": 500,
+    "UseVacuum": true,
+    "CheckSafetyBeforeEachStep": true,
+    "PauseOnError": true,
+    "RetryCount": 3,
+    "RetryDelayMs": 1000
+  },
+  "CreatedDate": "2025-08-06T15:57:13.3079709+09:00",
+  "ModifiedDate": "2025-08-06T15:57:58.1264789+09:00",
+  "CreatedBy": "jun_jihan",
+  "Version": "1.0"
+}

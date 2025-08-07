@@ -1,0 +1,161 @@
+﻿<UserControl x:Class="TeachingPendant.RecipeSystem.UI.Views.RecipeManager"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:converters="clr-namespace:TeachingPendant.RecipeSystem.UI.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             Background="LightGray">
+
+    <Grid Margin="5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- 검색 및 필터 영역 -->
+            <RowDefinition Height="*"/>
+            <!-- 레시피 목록 영역 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 하단 버튼 영역 -->
+        </Grid.RowDefinitions>
+
+        <!-- 검색 및 필터 영역 -->
+        <Grid Grid.Row="0" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 검색 라벨 -->
+            <TextBlock Grid.Column="0" Text="검색:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+
+            <!-- 검색 텍스트박스 -->
+            <TextBox x:Name="txtSearch" Grid.Column="1" Height="25" 
+                     TextChanged="txtSearch_TextChanged"
+                     VerticalContentAlignment="Center"/>
+
+            <!-- 필터 콤보박스 -->
+            <ComboBox x:Name="cmbFilter" Grid.Column="2" Width="120" Height="25" Margin="10,0,0,0"
+                      SelectionChanged="cmbFilter_SelectionChanged">
+                <ComboBoxItem Content="모든 레시피" IsSelected="True"/>
+                <ComboBoxItem Content="활성화된 레시피"/>
+                <ComboBoxItem Content="비활성화된 레시피"/>
+                <ComboBoxItem Content="최근 생성순"/>
+                <ComboBoxItem Content="최근 수정순"/>
+            </ComboBox>
+
+            <!-- 새로고침 버튼 -->
+            <Button x:Name="btnRefresh" Grid.Column="3" Content="새로고침" Width="80" Height="25" 
+                    Margin="10,0,0,0" Click="btnRefresh_Click"/>
+        </Grid>
+
+        <!-- 레시피 목록 영역 -->
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" Background="White">
+            <ListView x:Name="lvRecipes" SelectionChanged="lvRecipes_SelectionChanged"
+                      MouseDoubleClick="lvRecipes_MouseDoubleClick">
+                <ListView.View>
+                    <GridView>
+                        <!-- 활성화 상태 컬럼 -->
+                        <GridViewColumn Header="상태" Width="60">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Ellipse Width="12" Height="12">
+                                        <Ellipse.Fill>
+                                            <SolidColorBrush>
+                                                <SolidColorBrush.Color>
+                                                    <Binding Path="IsEnabled" Converter="{StaticResource BoolToColorConverter}"/>
+                                                </SolidColorBrush.Color>
+                                            </SolidColorBrush>
+                                        </Ellipse.Fill>
+                                    </Ellipse>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- 레시피 이름 컬럼 -->
+                        <GridViewColumn Header="레시피 이름" Width="200" DisplayMemberBinding="{Binding RecipeName}"/>
+
+                        <!-- 설명 컬럼 -->
+                        <GridViewColumn Header="설명" Width="250" DisplayMemberBinding="{Binding Description}"/>
+
+                        <!-- 스텝 수 컬럼 -->
+                        <GridViewColumn Header="스텝 수" Width="80" DisplayMemberBinding="{Binding StepCount}"/>
+
+                        <!-- 예상 시간 컬럼 -->
+                        <GridViewColumn Header="예상 시간" Width="100">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding EstimatedExecutionTime, StringFormat={}{0:F1}초}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+
+                        <!-- 생성일 컬럼 -->
+                        <GridViewColumn Header="생성일" Width="120">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding CreatedDate, StringFormat=yyyy-MM-dd}"/>
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Border>
+
+        <!-- 하단 버튼 영역 - 권한별 동적 표시 -->
+        <Grid Grid.Row="2" Margin="0,10,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 정보 영역 -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="txtRecipeCount" Text="총 0개 레시피" Margin="0,0,20,0"/>
+                <TextBlock x:Name="txtSelectedInfo" Text="선택된 레시피 없음" Foreground="Gray"/>
+            </StackPanel>
+
+            <!-- 오른쪽 버튼 영역 -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <!-- Guest 권한: 조회만 -->
+
+                <!-- Operator 권한: 실행 버튼 추가 -->
+                <Button x:Name="btnExecute" Content="실행" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnExecute_Click"
+                        IsEnabled="False" Background="LightGreen"/>
+
+                <!-- Engineer 권한: 편집/복사 버튼 추가 -->
+                <Button x:Name="btnEdit" Content="편집" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnEdit_Click"
+                        IsEnabled="False" Background="LightBlue"/>
+
+                <Button x:Name="btnCopy" Content="복사" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnCopy_Click"
+                        IsEnabled="False"/>
+
+                <Button x:Name="btnNew" Content="새 레시피" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnNew_Click"
+                        Background="LightYellow"/>
+
+                <!-- Administrator 권한: 관리 기능 추가 -->
+                <Button x:Name="btnDelete" Content="삭제" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnDelete_Click"
+                        IsEnabled="False" Background="LightCoral"/>
+
+                <Button x:Name="btnBackup" Content="백업" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnBackup_Click"/>
+
+                <Button x:Name="btnTemplate" Content="템플릿" Width="80" Height="30" 
+                        Margin="5,0,0,0" Click="btnTemplate_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+
+    <!-- 리소스 정의 -->
+    <UserControl.Resources>
+        <!-- Boolean to Color 컨버터 -->
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+    </UserControl.Resources>
+</UserControl>

@@ -1,0 +1,124 @@
+﻿<Window x:Class="TeachingPendant.MovementUI.PhysicsTestResultWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Physics Test Results" Height="600" Width="900"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize"
+        Background="LightGray">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 제목 -->
+        <TextBlock Grid.Row="0" Text="Physics Calculation Test Results" 
+                   FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" 
+                   Margin="0,0,0,15" Foreground="DarkBlue"/>
+
+        <!-- 기본 정보 -->
+        <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1" 
+                Background="LightYellow" Margin="0,0,0,15">
+            <StackPanel Orientation="Vertical" Margin="10">
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Group: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtGroup" Text="Group1" FontWeight="Bold" Foreground="DarkBlue"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Menu: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtMenu" Text="CPick" FontWeight="Bold" Foreground="DarkBlue"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Acceleration: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtAcceleration" Text="1000" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Deceleration: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtDeceleration" Text="1000" FontWeight="Bold"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Pendant Speed: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtPendantSpeed" Text="100%" FontWeight="Bold" Foreground="Red"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="Test Date: " FontWeight="Bold" Width="120"/>
+                    <TextBlock x:Name="txtTestDate" Text="" FontWeight="Bold"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- 결과 테이블 -->
+        <Border Grid.Row="2" BorderBrush="Black" BorderThickness="2">
+            <DataGrid x:Name="dgResults" AutoGenerateColumns="False" 
+                      IsReadOnly="True" CanUserSortColumns="True" 
+                      GridLinesVisibility="All" AlternatingRowBackground="LightCyan"
+                      HeadersVisibility="Column">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Segment" Binding="{Binding SegmentName}" 
+                                        Width="80" ElementStyle="{DynamicResource CenterAlignStyle}"/>
+                    <DataGridTextColumn Header="Start Point (A,T,Z)" Binding="{Binding StartPoint}" 
+                                        Width="140" ElementStyle="{DynamicResource CenterAlignStyle}"/>
+                    <DataGridTextColumn Header="End Point (A,T,Z)" Binding="{Binding EndPoint}" 
+                                        Width="140" ElementStyle="{DynamicResource CenterAlignStyle}"/>
+                    <DataGridTextColumn Header="Distance (mm)" Binding="{Binding Distance, StringFormat=F2}" 
+                                        Width="100" ElementStyle="{DynamicResource RightAlignStyle}"/>
+                    <DataGridTextColumn Header="Theoretical Max Speed" Binding="{Binding TheoreticalMaxSpeed, StringFormat=F2}" 
+                                        Width="140" ElementStyle="{DynamicResource RightAlignStyle}"/>
+                    <DataGridTextColumn Header="Final Command Speed" Binding="{Binding FinalCommandSpeed}" 
+                                        Width="140" ElementStyle="{DynamicResource RightAlignStyle}"/>
+                    <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" 
+                                        Width="80" ElementStyle="{DynamicResource CenterAlignStyle}"/>
+                    <DataGridTextColumn Header="Error Message" Binding="{Binding ErrorMessage}" 
+                                        Width="150"/>
+                </DataGrid.Columns>
+
+                <!-- Row 스타일 -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding StatusText}" Value="Error">
+                                <Setter Property="Background" Value="LightPink"/>
+                                <Setter Property="Foreground" Value="DarkRed"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding StatusText}" Value="Skip">
+                                <Setter Property="Background" Value="LightGray"/>
+                                <Setter Property="Foreground" Value="Gray"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding StatusText}" Value="Valid">
+                                <Setter Property="Background" Value="LightGreen"/>
+                                <Setter Property="Foreground" Value="DarkGreen"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.RowStyle>
+            </DataGrid>
+        </Border>
+
+        <!-- 하단 버튼 -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" 
+                    Margin="0,15,0,0">
+            <TextBlock Text="※ Valid: 정상 계산, Skip: 거리 부족, Error: 계산 오류" 
+                       VerticalAlignment="Center" Margin="0,0,20,0" 
+                       FontStyle="Italic" Foreground="Gray"/>
+            <Button Content="Export to CSV" Width="120" Height="35" Margin="0,0,10,0" 
+                    Click="ExportToCsv_Click" BorderBrush="Gray" BorderThickness="1"
+                    Background="LightBlue"/>
+            <Button Content="Close" Width="80" Height="35" 
+                    Click="Close_Click" BorderBrush="Gray" BorderThickness="1"
+                    Background="LightGray"/>
+        </StackPanel>
+    </Grid>
+
+    <!-- 스타일 리소스 -->
+    <Window.Resources>
+        <Style x:Key="CenterAlignStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="RightAlignStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+</Window>

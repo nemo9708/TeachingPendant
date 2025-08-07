@@ -1,0 +1,39 @@
+﻿<UserControl x:Class="TeachingPendant.MovementUI.Mode"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:TeachingPendant.MovementUI"
+             mc:Ignorable="d" 
+             Background="LightGray"
+             Width="150" Height="210"
+             BorderBrush="Black" BorderThickness="1">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Jog 모드 버튼 - 기본적으로 선택됨 -->
+        <Button x:Name="btnJog" Grid.Row="0" Content="Jog" Height="40" Margin="10,10,10,5" 
+                BorderBrush="Gray" BorderThickness="1"
+                Click="btnJog_Click"/>
+
+        <!-- Inching 모드 버튼 -->
+        <Button x:Name="btnInching" Grid.Row="1" Content="Inching" Height="40" Margin="10,5,10,5" 
+                BorderBrush="Gray" BorderThickness="1"
+                Click="btnInching_Click"/>
+
+        <!-- Abs 모드 버튼 -->
+        <Button x:Name="btnAbs" Grid.Row="2" Content="Abs" Height="40" Margin="10,5,10,10" 
+                BorderBrush="Gray" BorderThickness="1"
+                Click="btnAbs_Click"/>
+
+        <!-- Total 모드 버튼 -->
+        <Button x:Name="btnTotal" Grid.Row="3" Content="Total" Height="40" Margin="10,0,10,10" 
+                BorderBrush="Gray" BorderThickness="1"
+                Click="btnTotal_Click"/>
+    </Grid>
+</UserControl>

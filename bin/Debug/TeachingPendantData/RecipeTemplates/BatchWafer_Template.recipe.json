@@ -1,0 +1,351 @@
+{
+  "RecipeId": "e27db141-044f-4566-8f9b-b4590c9bdc38",
+  "RecipeName": "5개 웨이퍼 배치 반송",
+  "Description": "P1~P5에서 P4로 웨이퍼 5개를 순차 반송",
+  "IsEnabled": true,
+  "Steps": [
+    {
+      "StepNumber": 1,
+      "Type": 3,
+      "Description": "홈 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 2,
+      "Type": 5,
+      "Description": "안전 상태 확인",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 3,
+      "Type": 1,
+      "Description": "P1에서 웨이퍼 1 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P1",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 4,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 1 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 5,
+      "Type": 4,
+      "Description": "웨이퍼 1 완료 후 대기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 1.0,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 500,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 6,
+      "Type": 1,
+      "Description": "P2에서 웨이퍼 2 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P2",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 7,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 2 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 8,
+      "Type": 4,
+      "Description": "웨이퍼 2 완료 후 대기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 1.0,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 500,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 9,
+      "Type": 1,
+      "Description": "P3에서 웨이퍼 3 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P3",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 10,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 3 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 11,
+      "Type": 4,
+      "Description": "웨이퍼 3 완료 후 대기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 1.0,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 500,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 12,
+      "Type": 1,
+      "Description": "P4에서 웨이퍼 4 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 13,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 4 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 14,
+      "Type": 4,
+      "Description": "웨이퍼 4 완료 후 대기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 1.0,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 500,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 15,
+      "Type": 1,
+      "Description": "P5에서 웨이퍼 5 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P5",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 16,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 5 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 17,
+      "Type": 3,
+      "Description": "완료 후 홈 복귀",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3958158+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    }
+  ],
+  "Parameters": {
+    "DefaultSpeed": 50,
+    "PickSpeed": 30,
+    "PlaceSpeed": 30,
+    "HomeSpeed": 80,
+    "PickHeight": 5,
+    "PlaceHeight": 5,
+    "SafeHeight": 100,
+    "PickDelayMs": 500,
+    "PlaceDelayMs": 500,
+    "UseVacuum": true,
+    "CheckSafetyBeforeEachStep": true,
+    "PauseOnError": true,
+    "RetryCount": 3,
+    "RetryDelayMs": 1000
+  },
+  "CreatedDate": "2025-07-22T17:31:45.3958158+09:00",
+  "ModifiedDate": "2025-07-22T17:31:45.3958158+09:00",
+  "CreatedBy": "jun_jihan",
+  "Version": "1.0"
+}

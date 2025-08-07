@@ -1,0 +1,123 @@
+{
+  "RecipeId": "fe7ac2a3-1166-4933-8119-40b59d760f4d",
+  "RecipeName": "단일 웨이퍼 반송",
+  "Description": "P1에서 P4로 웨이퍼 1개를 반송하는 기본 템플릿",
+  "IsEnabled": true,
+  "Steps": [
+    {
+      "StepNumber": 1,
+      "Type": 3,
+      "Description": "홈 위치로 이동",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3409044+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 2,
+      "Type": 5,
+      "Description": "안전 상태 확인",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 0.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3419556+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 3,
+      "Type": 1,
+      "Description": "P1에서 웨이퍼 집기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P1",
+      "CreatedTime": "2025-07-22T17:31:45.3419556+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 4,
+      "Type": 2,
+      "Description": "P4에 웨이퍼 놓기",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 4.0,
+      "Parameters": {},
+      "TeachingGroupName": "Group1",
+      "TeachingLocationName": "P4",
+      "CreatedTime": "2025-07-22T17:31:45.3419556+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    },
+    {
+      "StepNumber": 5,
+      "Type": 3,
+      "Description": "완료 후 홈 복귀",
+      "IsEnabled": true,
+      "TargetPosition": {
+        "R": 0.0,
+        "Theta": 0.0,
+        "Z": 0.0
+      },
+      "Speed": 50,
+      "EstimatedDuration": 7.5,
+      "Parameters": {},
+      "TeachingGroupName": "",
+      "TeachingLocationName": "",
+      "CreatedTime": "2025-07-22T17:31:45.3419556+09:00",
+      "WaitTimeMs": 1000,
+      "SafetyOptions": 7
+    }
+  ],
+  "Parameters": {
+    "DefaultSpeed": 50,
+    "PickSpeed": 30,
+    "PlaceSpeed": 30,
+    "HomeSpeed": 80,
+    "PickHeight": 5,
+    "PlaceHeight": 5,
+    "SafeHeight": 100,
+    "PickDelayMs": 500,
+    "PlaceDelayMs": 500,
+    "UseVacuum": true,
+    "CheckSafetyBeforeEachStep": true,
+    "PauseOnError": true,
+    "RetryCount": 3,
+    "RetryDelayMs": 1000
+  },
+  "CreatedDate": "2025-07-22T17:31:45.3378858+09:00",
+  "ModifiedDate": "2025-07-22T17:31:45.3419556+09:00",
+  "CreatedBy": "jun_jihan",
+  "Version": "1.0"
+}

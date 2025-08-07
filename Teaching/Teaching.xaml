@@ -1,0 +1,259 @@
+﻿<UserControl x:Class="TeachingPendant.TeachingUI.Teaching"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:TeachingPendant.TeachingUI"
+             mc:Ignorable="d" 
+             Background="LightGray"
+             BorderBrush="Black" BorderThickness="1">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!-- Group 선택 영역 -->
+            <RowDefinition Height="*"/>
+            <!-- 메인 콘텐츠 영역 -->
+            <RowDefinition Height="Auto"/>
+            <!-- 하단 버튼 영역 -->
+        </Grid.RowDefinitions>
+
+        <!-- Group 선택 영역 -->
+        <Border Grid.Row="0" BorderBrush="Black" BorderThickness="1" Margin="1" Background="LightYellow">
+            <Grid Margin="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Group :" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+
+                <ComboBox Grid.Column="1" x:Name="cmbGroups" Height="25" VerticalAlignment="Center"
+                          SelectionChanged="GroupComboBox_SelectionChanged" MaxWidth="120">
+                    <ComboBoxItem Content="Group1" IsSelected="True"/>
+                </ComboBox>
+
+                <TextBlock Grid.Column="2" Text="※ To add/delete groups, use Movement UI" 
+                           VerticalAlignment="Center" FontStyle="Italic" 
+                           Foreground="DarkGray" FontSize="11" HorizontalAlignment="Right"/>
+
+                <!-- 숨겨진 Alarm 텍스트블록 -->
+                <TextBlock x:Name="txtAlarmMessage" Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <Grid Grid.Row="1" x:Name="MainContentGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140"/>
+                <!-- 왼쪽 Cassette/Stage 리스트 영역 -->
+                <ColumnDefinition Width="*"/>
+                <!-- 중앙 설정 영역 -->
+                <ColumnDefinition Width="*"/>
+                <!-- 오른쪽 좌표 영역 -->
+            </Grid.ColumnDefinitions>
+
+            <!-- 왼쪽 Cassette/Stage 리스트 -->
+            <Border Grid.Column="0" BorderThickness="1" BorderBrush="Black" Margin="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <!-- Cassette 제목 -->
+                        <RowDefinition Height="2*"/>
+                        <!-- Cassette 리스트 -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Stage 제목 -->
+                        <RowDefinition Height="2*"/>
+                        <!-- Stage 리스트 -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Save 버튼 -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Load 버튼 -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Cassette 섹션 -->
+                    <TextBlock Grid.Row="0" Text="Cassette" FontWeight="Bold" HorizontalAlignment="Center" 
+                               Background="LightBlue" Padding="2" Margin="2"/>
+
+                    <ListBox Grid.Row="1" x:Name="lstCassettes" Margin="3" 
+                             SelectionChanged="CassetteListBox_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Padding" Value="5,2" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="LightBlue" />
+                                        <Setter Property="Foreground" Value="Navy" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <!-- 16개 Cassette -->
+                        <ListBoxItem Content="Cassette 1" />
+                        <ListBoxItem Content="Cassette 2" />
+                        <ListBoxItem Content="Cassette 3" />
+                        <ListBoxItem Content="Cassette 4" />
+                        <ListBoxItem Content="Cassette 5" />
+                        <ListBoxItem Content="Cassette 6" />
+                        <ListBoxItem Content="Cassette 7" />
+                        <ListBoxItem Content="Cassette 8" />
+                        <ListBoxItem Content="Cassette 9" />
+                        <ListBoxItem Content="Cassette 10" />
+                        <ListBoxItem Content="Cassette 11" />
+                        <ListBoxItem Content="Cassette 12" />
+                        <ListBoxItem Content="Cassette 13" />
+                        <ListBoxItem Content="Cassette 14" />
+                        <ListBoxItem Content="Cassette 15" />
+                        <ListBoxItem Content="Cassette 16" />
+                    </ListBox>
+
+                    <!-- Stage 섹션 -->
+                    <TextBlock Grid.Row="2" Text="Stage" FontWeight="Bold" HorizontalAlignment="Center" 
+                               Background="LightGreen" Padding="2" Margin="2,8,2,2"/>
+
+                    <ListBox Grid.Row="3" x:Name="lstStages" Margin="3" 
+                             SelectionChanged="StageListBox_SelectionChanged">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Padding" Value="5,2" />
+                                <Style.Triggers>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="LightGreen" />
+                                        <Setter Property="Foreground" Value="DarkGreen" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <!-- 16개 Stage -->
+                        <ListBoxItem Content="Stage 1" />
+                        <ListBoxItem Content="Stage 2" />
+                        <ListBoxItem Content="Stage 3" />
+                        <ListBoxItem Content="Stage 4" />
+                        <ListBoxItem Content="Stage 5" />
+                        <ListBoxItem Content="Stage 6" />
+                        <ListBoxItem Content="Stage 7" />
+                        <ListBoxItem Content="Stage 8" />
+                        <ListBoxItem Content="Stage 9" />
+                        <ListBoxItem Content="Stage 10" />
+                        <ListBoxItem Content="Stage 11" />
+                        <ListBoxItem Content="Stage 12" />
+                        <ListBoxItem Content="Stage 13" />
+                        <ListBoxItem Content="Stage 14" />
+                        <ListBoxItem Content="Stage 15" />
+                        <ListBoxItem Content="Stage 16" />
+                    </ListBox>
+
+                    <!-- Save/Load 버튼들 -->
+                    <Button Grid.Row="4" x:Name="btnSave" Content="Save" Height="25" Margin="3,8,3,2" 
+                            Click="SaveButton_Click"/>
+                    <Button Grid.Row="5" x:Name="btnLoad" Content="Load" Height="25" Margin="3,0,3,5" 
+                            Click="LoadButton_Click"/>
+                </Grid>
+            </Border>
+
+            <!-- 중앙 설정 영역 -->
+            <Border Grid.Column="1" BorderThickness="1" BorderBrush="Black" Margin="1">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 현재 선택된 Group과 항목 표시 -->
+                    <TextBlock x:Name="txtCurrentGroupAndSelection" Grid.Row="0" Grid.ColumnSpan="2" 
+                               Text="Group1 - Select Cassette or Stage" FontWeight="Bold" 
+                               HorizontalAlignment="Center" Margin="0,0,0,10"
+                               Foreground="DarkBlue"/>
+
+                    <!-- 설정 항목들 -->
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Slot Count (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtSlotCount" Grid.Row="1" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Pitch (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPitch" Grid.Row="2" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Pick Offset (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPickOffset" Grid.Row="3" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Pick Down (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPickDown" Grid.Row="4" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Pick Up (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPickUp" Grid.Row="5" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Place Down (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPlaceDown" Grid.Row="6" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Place Up (mm) :" VerticalAlignment="Center" Margin="0,3"/>
+                    <TextBox x:Name="txtPlaceUp" Grid.Row="7" Grid.Column="1" Text="1" Width="50" 
+                             HorizontalAlignment="Right" TextAlignment="Center" VerticalContentAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- 오른쪽 좌표 영역 -->
+            <Border Grid.Column="2" BorderThickness="1" BorderBrush="Black" Margin="1">
+                <Grid x:Name="CoordinateGrid" Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- A/X 좌표 -->
+                    <TextBlock x:Name="lblPositionA" Grid.Row="0" Grid.Column="0" Text="R :" VerticalAlignment="Center" Margin="0,3,5,3"/>
+                    <TextBox Grid.Row="0" Grid.Column="1" x:Name="txtPositionA" Text="0.00" Width="45" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <!-- T/Y 좌표 -->
+                    <TextBlock x:Name="lblPositionT" Grid.Row="0" Grid.Column="2" Text="T(°) :" VerticalAlignment="Center" Margin="5,3"/>
+                    <TextBox Grid.Row="0" Grid.Column="3" x:Name="txtPositionT" Text="0.00" Width="45" TextAlignment="Center" VerticalContentAlignment="Center"/>
+
+                    <!-- Z 좌표 -->
+                    <TextBlock x:Name="lblPositionZ" Grid.Row="0" Grid.Column="4" Text="Z :" VerticalAlignment="Center" Margin="5,3"/>
+                    <TextBox Grid.Row="0" Grid.Column="5" x:Name="txtPositionZ" Text="0.00" Width="45" TextAlignment="Center" VerticalContentAlignment="Center"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 하단 버튼 영역 -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <Button Grid.Column="0" x:Name="btnToggleCoordinateMode" Content="Cartesian" Margin="2" BorderBrush="Gray" BorderThickness="1" Click="ToggleCoordinateMode_Click"/>
+            <!-- 테스트 버튼 추가 -->
+            <Button Grid.Column="1" x:Name="btnTest" Content="TEST" Width="60" Height="30" Margin="5" BorderBrush="Red" BorderThickness="2" Background="Yellow" Click="TestButton_Click"/>
+        </Grid>
+    </Grid>
+</UserControl>
