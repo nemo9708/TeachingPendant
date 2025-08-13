@@ -304,6 +304,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="RecipeSystem\UI\Control\" />
     <Folder Include="Services\" />
   </ItemGroup>
   <ItemGroup>

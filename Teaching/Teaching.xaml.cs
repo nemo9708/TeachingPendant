@@ -1888,6 +1888,374 @@ namespace TeachingPendant.TeachingUI
         }
 
         #endregion
+
+        #region Static Data Provider Methods for Movement Integration
+        /// <summary>
+        /// 그룹별 StageData 정보를 Movement에 제공 (정적 메서드)
+        /// </summary>
+        /// <param name="groupName">그룹명</param>
+        /// <returns>그룹의 모든 StageData 딕셔너리</returns>
+        public static Dictionary<string, TeachingStageDataInfo> GetStageDataForGroup(string groupName)
+        {
+            var result = new Dictionary<string, TeachingStageDataInfo>();
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetStageDataForGroup 호출됨 - {groupName}");
+
+                if (string.IsNullOrEmpty(groupName))
+                {
+                    System.Diagnostics.Debug.WriteLine("Teaching: 그룹명이 비어있음");
+                    return result;
+                }
+
+                // 정적 데이터에서 해당 그룹 검색
+                if (_persistentGroupItemData.ContainsKey(groupName))
+                {
+                    var groupData = _persistentGroupItemData[groupName];
+
+                    foreach (var item in groupData)
+                    {
+                        string itemName = item.Key; // "Cassette 1", "Stage 1" 등
+                        var stageData = item.Value;
+
+                        // TeachingStageDataInfo로 변환
+                        var dataInfo = new TeachingStageDataInfo
+                        {
+                            ItemName = itemName,
+                            SlotCount = stageData.SlotCount,
+                            Pitch = stageData.Pitch,
+                            PickOffset = stageData.PickOffset,
+                            PickDown = stageData.PickDown,
+                            PickUp = stageData.PickUp,
+                            PlaceDown = stageData.PlaceDown,
+                            PlaceUp = stageData.PlaceUp,
+                            PositionA = stageData.PositionA,
+                            PositionT = stageData.PositionT,
+                            PositionZ = stageData.PositionZ,
+                            ItemType = DetermineItemType(itemName)
+                        };
+
+                        result[itemName] = dataInfo;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"Teaching: {groupName} 그룹에서 {result.Count}개 아이템 반환");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"Teaching: {groupName} 그룹을 찾을 수 없음");
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetStageDataForGroup 오류 - {ex.Message}");
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// 현재 Movement 인스턴스 가져오기 (정적 메서드)
+        /// </summary>
+        /// <returns>현재 활성 Movement 인스턴스</returns>
+        public static MovementUI.Movement GetCurrentInstance()
+        {
+            try
+            {
+                // CommonFrame을 통해 현재 활성 Movement 인스턴스 찾기
+                var frames = Application.Current.Windows.OfType<Window>()
+                    .SelectMany(w => FindVisualChildren<CommonFrame>(w));
+
+                foreach (var frame in frames)
+                {
+                    if (frame.MainContentArea?.Content is MovementUI.Movement movement)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Teaching: Movement 인스턴스를 찾았습니다");
+                        return movement;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("Teaching: Movement 인스턴스를 찾을 수 없습니다");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetCurrentInstance 오류 - {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 특정 그룹의 사용 가능한 위치 목록 반환 (정적 메서드)
+        /// </summary>
+        /// <param name="groupName">그룹명</param>
+        /// <returns>위치 목록</returns>
+        public static List<string> GetAvailableLocations(string groupName)
+        {
+            try
+            {
+                var locations = new List<string>();
+
+                if (_persistentGroupItemData.ContainsKey(groupName))
+                {
+                    var groupData = _persistentGroupItemData[groupName];
+                    locations.AddRange(groupData.Keys);
+                }
+
+                // 기본 위치가 없으면 표준 위치 추가
+                if (locations.Count == 0)
+                {
+                    locations.AddRange(new[] { "Cassette 1", "Stage 1" });
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching: {groupName} 사용 가능한 위치 {locations.Count}개");
+                return locations;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetAvailableLocations 오류 - {ex.Message}");
+                return new List<string> { "Cassette 1", "Stage 1" };
+            }
+        }
+
+        /// <summary>
+        /// 특정 위치의 좌표 정보 반환 (정적 메서드)
+        /// </summary>
+        /// <param name="groupName">그룹명</param>
+        /// <param name="locationName">위치명</param>
+        /// <returns>위치 좌표 정보</returns>
+        public static TeachingPositionInfo GetPositionInfo(string groupName, string locationName)
+        {
+            try
+            {
+                if (_persistentGroupItemData.ContainsKey(groupName) &&
+                    _persistentGroupItemData[groupName].ContainsKey(locationName))
+                {
+                    var stageData = _persistentGroupItemData[groupName][locationName];
+
+                    return new TeachingPositionInfo
+                    {
+                        GroupName = groupName,
+                        LocationName = locationName,
+                        PositionA = stageData.PositionA,
+                        PositionT = stageData.PositionT,
+                        PositionZ = stageData.PositionZ,
+                        SlotCount = stageData.SlotCount,
+                        Pitch = stageData.Pitch,
+                        IsValid = true
+                    };
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching: 위치 정보를 찾을 수 없음 - {groupName}.{locationName}");
+                return new TeachingPositionInfo { IsValid = false };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetPositionInfo 오류 - {ex.Message}");
+                return new TeachingPositionInfo { IsValid = false };
+            }
+        }
+
+        /// <summary>
+        /// Teaching 데이터 변경 이벤트 발생 (정적 메서드)
+        /// </summary>
+        /// <param name="groupName">변경된 그룹명</param>
+        /// <param name="itemName">변경된 아이템명</param>
+        /// <param name="updatedData">업데이트된 데이터</param>
+        public static void NotifyDataChanged(string groupName, string itemName, StageData updatedData)
+        {
+            try
+            {
+                // Movement에 데이터 변경 알림
+                var movementInstance = GetCurrentInstance();
+                if (movementInstance != null)
+                {
+                    // Movement의 TeachingStageInfo 형태로 변환
+                    var teachingInfo = new MovementUI.Movement.TeachingStageInfo
+                    {
+                        SlotCount = updatedData.SlotCount,
+                        Pitch = updatedData.Pitch,
+                        PickOffset = updatedData.PickOffset,
+                        PickDown = updatedData.PickDown,
+                        PickUp = updatedData.PickUp,
+                        PlaceDown = updatedData.PlaceDown,
+                        PlaceUp = updatedData.PlaceUp,
+                        PositionA = updatedData.PositionA,
+                        PositionT = updatedData.PositionT,
+                        PositionZ = updatedData.PositionZ,
+                        ItemType = DetermineItemType(itemName)
+                    };
+
+                    // Movement에 이벤트 전달
+                    var eventArgs = new MovementUI.Movement.TeachingDataChangedEventArgs(groupName, itemName, teachingInfo);
+
+                    // Movement의 이벤트 핸들러 호출 (리플렉션 사용)
+                    var method = movementInstance.GetType().GetMethod("OnTeachingDataUpdated",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                    if (method != null)
+                    {
+                        method.Invoke(movementInstance, new object[] { null, eventArgs });
+                        System.Diagnostics.Debug.WriteLine($"Teaching: Movement에 데이터 변경 알림 전송 - {groupName}.{itemName}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching: 데이터 변경 알림 - {groupName}.{itemName}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: NotifyDataChanged 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 모든 그룹 목록 반환 (정적 메서드)
+        /// </summary>
+        /// <returns>그룹명 리스트</returns>
+        public static List<string> GetAllGroups()
+        {
+            try
+            {
+                var groups = new List<string>(_persistentGroupItemData.Keys);
+
+                if (groups.Count == 0)
+                {
+                    groups.Add("Group1"); // 기본 그룹
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching: 전체 그룹 수 {groups.Count}개");
+                return groups;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Teaching: GetAllGroups 오류 - {ex.Message}");
+                return new List<string> { "Group1" };
+            }
+        }
+        #endregion
+
+        #region Helper Methods for Data Provider
+        /// <summary>
+        /// 아이템명에서 타입 결정
+        /// </summary>
+        /// <param name="itemName">아이템명 (예: "Cassette 1", "Stage 1")</param>
+        /// <returns>타입 문자열</returns>
+        private static string DetermineItemType(string itemName)
+        {
+            if (string.IsNullOrEmpty(itemName))
+                return "Unknown";
+
+            if (itemName.StartsWith("Cassette", StringComparison.OrdinalIgnoreCase))
+                return "Cassette";
+            else if (itemName.StartsWith("Stage", StringComparison.OrdinalIgnoreCase))
+                return "Stage";
+            else
+                return "Unknown";
+        }
+
+        /// <summary>
+        /// Visual Tree에서 특정 타입의 자식 요소 찾기
+        /// </summary>
+        /// <typeparam name="T">찾을 요소 타입</typeparam>
+        /// <param name="depObj">상위 DependencyObject</param>
+        /// <returns>찾은 요소들</returns>
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region Data Classes for Movement Integration
+        /// <summary>
+        /// Movement에 제공할 Teaching 스테이지 데이터 정보
+        /// </summary>
+        public class TeachingStageDataInfo
+        {
+            public string ItemName { get; set; } = "";
+            public string ItemType { get; set; } = ""; // "Cassette" 또는 "Stage"
+            public int SlotCount { get; set; } = 1;
+            public int Pitch { get; set; } = 1;
+            public int PickOffset { get; set; } = 1;
+            public int PickDown { get; set; } = 1;
+            public int PickUp { get; set; } = 1;
+            public int PlaceDown { get; set; } = 1;
+            public int PlaceUp { get; set; } = 1;
+            public decimal PositionA { get; set; } = 0.00m;
+            public decimal PositionT { get; set; } = 0.00m;
+            public decimal PositionZ { get; set; } = 0.00m;
+        }
+
+        /// <summary>
+        /// Teaching 위치 정보
+        /// </summary>
+        public class TeachingPositionInfo
+        {
+            public string GroupName { get; set; } = "";
+            public string LocationName { get; set; } = "";
+            public decimal PositionA { get; set; } = 0.00m;
+            public decimal PositionT { get; set; } = 0.00m;
+            public decimal PositionZ { get; set; } = 0.00m;
+            public int SlotCount { get; set; } = 1;
+            public int Pitch { get; set; } = 1;
+            public bool IsValid { get; set; } = false;
+            public DateTime LastUpdated { get; set; } = DateTime.Now;
+        }
+        #endregion
+
+        #region Enhanced Save Method with Movement Notification
+        /// <summary>
+        /// 데이터 저장 시 Movement에 알림 포함 (기존 SaveCurrentData 메서드 수정)
+        /// </summary>
+        private void SaveCurrentDataWithNotification()
+        {
+            try
+            {
+                if (!ValidateCurrentSelection())
+                {
+                    System.Diagnostics.Debug.WriteLine("SaveCurrentDataWithNotification: 유효성 검사 실패");
+                    return;
+                }
+
+                // 기존 저장 로직
+                var currentData = CreateStageDataFromUI();
+
+                if (!_groupItemData[_currentSelectedGroup].ContainsKey(_currentSelectedItemName))
+                {
+                    _groupItemData[_currentSelectedGroup][_currentSelectedItemName] = new StageData();
+                }
+
+                _groupItemData[_currentSelectedGroup][_currentSelectedItemName] = currentData;
+                SaveToPersistentStorage();
+
+                // Movement에 데이터 변경 알림
+                NotifyDataChanged(_currentSelectedGroup, _currentSelectedItemName, currentData);
+
+                System.Diagnostics.Debug.WriteLine($"Teaching data saved and Movement notified for {_currentSelectedGroup} - {_currentSelectedItemName}");
+                System.Diagnostics.Debug.WriteLine($"저장된 데이터: Slot={currentData.SlotCount}, Pitch={currentData.Pitch}, A={currentData.PositionA}, T={currentData.PositionT}, Z={currentData.PositionZ}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SaveCurrentDataWithNotification 오류: {ex.Message}");
+                AlarmMessageManager.ShowAlarm(Alarms.DATA_ERROR, $"Save error for {_currentSelectedItemName}: {ex.Message}");
+            }
+        }
+        #endregion
     }
 
     /// <summary>

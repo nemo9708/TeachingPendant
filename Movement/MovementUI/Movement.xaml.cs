@@ -156,6 +156,12 @@ namespace TeachingPendant.MovementUI
             LoadPersistentData();
             InitializeGroupData();
             InitializeAutoExecution();
+            RegisterInstance(this);
+
+            // Teaching 데이터 변경 이벤트 구독
+            SubscribeToTeachingEvents();
+
+            System.Diagnostics.Debug.WriteLine("Movement: 생성자 완료 및 인스턴스 등록됨");
 
             // Speed 변경 이벤트 구독
             GlobalSpeedManager.SpeedChanged += OnGlobalSpeedChanged;
@@ -201,6 +207,12 @@ namespace TeachingPendant.MovementUI
             GlobalSpeedManager.SpeedChanged -= OnGlobalSpeedChanged;
 
             UnsubscribeFromHomePosEvents();
+
+            // Teaching 이벤트 구독 해제
+            UnsubscribeFromTeachingEvents();
+
+            // 인스턴스 등록 해제
+            UnregisterInstance();
 
             // Setup에도 등록 해제를 알려 메모리 누수를 방지
             Setup.UnregisterMovementInstance();
@@ -447,18 +459,11 @@ namespace TeachingPendant.MovementUI
         private void Movement_Loaded(object sender, RoutedEventArgs e)
         {
             ShowGroupListView();
+
+            // Teaching과의 초기 동기화
+            InitializeTeachingIntegration();
+
             AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION, "Movement UI loaded successfully");
-        }
-
-        private void InitializeAutoExecution()
-        {
-            _autoExecutionTimer = new DispatcherTimer();
-
-            // Speed에 따라 타이머 간격 조정
-            UpdateTimerInterval();
-
-            _autoExecutionTimer.Tick += AutoExecutionTimer_Tick;
-            UpdateAutoStatusDisplay();
         }
 
         // 타이머 간격 업데이트 메서드 추가
@@ -560,15 +565,21 @@ namespace TeachingPendant.MovementUI
         private void StartAutoExecution()
         {
             _isAutoExecutionRunning = true;
-            _currentSequenceIndex = 0; // C PICK부터 시작
-            _currentPointIndex = 0;    // P1부터 시작
+            _currentSequenceIndex = 0;
+            _currentPointIndex = 0;
+
+            // 초기 좌표를 현재 위치로 설정 (또는 0,0,0으로 초기화)
+            _currentR = 0.00m;
+            _currentT = 0.00m;
+            _currentA = 0.00m;
 
             SetNextTarget();
             _autoExecutionTimer.Start();
 
             UpdateAutoStatusDisplay();
+            UpdateCurrentCoordinateDisplay(); // 즉시 한번 업데이트
 
-            // Remote 상태 업데이트 추가
+            // Remote 상태 업데이트
             IsRemoteExecutionRunning = true;
             RemoteExecutionStatusChanged?.Invoke(this, true);
 
@@ -632,6 +643,9 @@ namespace TeachingPendant.MovementUI
         }
 
         // 자동 실행 타이머 이벤트
+        /// <summary>
+        /// 자동 실행 타이머 이벤트 (슬롯 추적 포함)
+        /// </summary>
         private void AutoExecutionTimer_Tick(object sender, EventArgs e)
         {
             if (!_isAutoExecutionRunning) return;
@@ -648,18 +662,33 @@ namespace TeachingPendant.MovementUI
                 return; // 대기 중이면 좌표 이동하지 않음
             }
 
-            // 각 축별로 1씩 증가하여 목표에 도달
+            // 각 축별로 1씩 증가하여 목표에 도달 (기존 로직)
             bool rReached = MoveToTarget(ref _currentR, _targetR);
             bool tReached = MoveToTarget(ref _currentT, _targetT);
             bool aReached = MoveToTarget(ref _currentA, _targetA);
 
-            // 현재 좌표 UI 업데이트
+            // 현재 좌표 UI 업데이트 (기존 메서드 사용)
             UpdateCurrentCoordinateDisplay();
 
-            // 모든 축이 목표에 도달했으면 대기 시작
+            // 모든 축이 목표에 도달했으면 처리 (기존 + 슬롯 추적 로직 추가)
             if (rReached && tReached && aReached)
             {
-                StartWait();
+                // 슬롯 추적 로직은 CPick에서만 실행
+                string currentMenu = _executionSequence[_currentSequenceIndex];
+                if (currentMenu == "CPick" && _isSlotTrackingActive)
+                {
+                    System.Diagnostics.Debug.WriteLine($"CPick 완료 - 슬롯 {_currentSlotNumber} 처리됨");
+                    MoveToNextSlot();
+                    ApplyP3CoordinatesForCurrentSlot("CPick");
+                    _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
+                    _currentPointIndex = 0;
+                    SetNextTarget();
+                }
+                else
+                {
+                    // 기존 대기 시작 로직
+                    StartWait();
+                }
             }
         }
 
@@ -698,69 +727,95 @@ namespace TeachingPendant.MovementUI
         // 다음 포인트로 이동
         private void MoveToNextPoint()
         {
-            _currentPointIndex++;
+            string currentMenu = _executionSequence[_currentSequenceIndex];
 
-            // P7 완료 시 다음 메뉴로
-            if (_currentPointIndex > 6) // P7 완료
+            // CPick에서 슬롯 추적이 활성화된 경우 특별 처리
+            if (currentMenu == "CPick" && _isSlotTrackingActive)
             {
-                _currentPointIndex = 0;
-                _currentSequenceIndex++;
+                // CPick은 항상 P3만 사용하므로 다음 메뉴로 이동
+                _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
+                _currentPointIndex = 0; // 다음 메뉴는 P1부터 시작
 
-                // 모든 메뉴 완료 시 처음부터 반복
-                if (_currentSequenceIndex >= _executionSequence.Length)
+                System.Diagnostics.Debug.WriteLine($"CPick 완료, 다음 메뉴로 이동: {_executionSequence[_currentSequenceIndex]}");
+            }
+            else
+            {
+                // 기존 로직: 포인트 순차 이동
+                _currentPointIndex++;
+
+                // P7까지 갔으면 다음 메뉴로
+                if (_currentPointIndex >= 7) // P1~P7
                 {
-                    _currentSequenceIndex = 0;
+                    _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
+                    _currentPointIndex = 0;
+
+                    System.Diagnostics.Debug.WriteLine($"포인트 완료, 다음 메뉴로 이동: {_executionSequence[_currentSequenceIndex]}");
                 }
             }
 
             SetNextTarget();
-            UpdateAutoStatusDisplay();
-
-            string currentMenu = _executionSequence[_currentSequenceIndex];
-            string pointName = $"P{_currentPointIndex + 1}";
-            AlarmMessageManager.ShowAlarm(Alarms.POSITION_LOADED,
-                $"Moving to {currentMenu} {pointName}");
         }
 
         // 현재 좌표 표시 업데이트
         private void UpdateCurrentCoordinateDisplay()
         {
-            if (txtCurrentR != null) txtCurrentR.Text = _currentR.ToString("F2");
-            if (txtCurrentT != null) txtCurrentT.Text = _currentT.ToString("F2");
-            if (txtCurrentA != null) txtCurrentA.Text = _currentA.ToString("F2");
+            try
+            {
+                // UI 스레드에서 실행되는지 확인
+                if (!Dispatcher.CheckAccess())
+                {
+                    Dispatcher.BeginInvoke(new Action(UpdateCurrentCoordinateDisplay));
+                    return;
+                }
 
-            // Monitor로 좌표 전달
-            CurrentCoordinateChanged?.Invoke(this, new MovementCoordinateEventArgs(_currentR, _currentT, _currentA));
+                if (txtCurrentR != null) txtCurrentR.Text = _currentR.ToString("F2");
+                if (txtCurrentT != null) txtCurrentT.Text = _currentT.ToString("F2");
+                if (txtCurrentA != null) txtCurrentA.Text = _currentA.ToString("F2");
+
+                // Monitor로 좌표 전달
+                CurrentCoordinateChanged?.Invoke(this, new MovementCoordinateEventArgs(_currentR, _currentT, _currentA));
+
+                // 디버그 로그 추가 (임시)
+                System.Diagnostics.Debug.WriteLine($"Current 좌표 업데이트: R={_currentR:F2}, T={_currentT:F2}, A={_currentA:F2}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateCurrentCoordinateDisplay 오류: {ex.Message}");
+            }
         }
 
         // 자동 실행 상태 표시 업데이트
         private void UpdateAutoStatusDisplay()
         {
-            if (txtAutoStatus != null)
+            try
             {
-                if (_isAutoExecutionRunning)
+                if (txtAutoStatus != null)
                 {
-                    string currentMenu = _executionSequence[_currentSequenceIndex];
-                    string pointName = $"P{_currentPointIndex + 1}";
-                    txtAutoStatus.Text = $"Running: {currentMenu} {pointName}";
-                    txtAutoStatus.Foreground = Brushes.Green;
+                    if (_isAutoExecutionRunning)
+                    {
+                        string currentMenu = _executionSequence[_currentSequenceIndex];
+                        string status = $"Running - {currentMenu}";
 
-                    // Monitor로 현재 구간 전달
-                    CurrentSectionChanged?.Invoke(this, new MovementSectionEventArgs(currentMenu, pointName, true));
-                }
-                else
-                {
-                    txtAutoStatus.Text = "Stopped";
-                    txtAutoStatus.Foreground = Brushes.Red;
+                        // 슬롯 추적이 활성화된 경우 슬롯 정보 추가
+                        if (_isSlotTrackingActive && currentMenu == "CPick")
+                        {
+                            status += $" (Slot {_currentSlotNumber})";
+                        }
 
-                    // Monitor로 정지 상태 전달
-                    CurrentSectionChanged?.Invoke(this, new MovementSectionEventArgs("", "", false));
+                        txtAutoStatus.Text = status;
+                        txtAutoStatus.Foreground = new SolidColorBrush(Colors.Green);
+                    }
+                    else
+                    {
+                        txtAutoStatus.Text = "Stopped";
+                        txtAutoStatus.Foreground = new SolidColorBrush(Colors.Red);
+                    }
                 }
             }
-
-            // 버튼 상태 업데이트
-            if (btnAutoStart != null) btnAutoStart.IsEnabled = !_isAutoExecutionRunning;
-            if (btnAutoStop != null) btnAutoStop.IsEnabled = _isAutoExecutionRunning;
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateAutoStatusDisplay 오류: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -1485,11 +1540,16 @@ namespace TeachingPendant.MovementUI
             if (menuType == "Aligner")
             {
                 SetCoordinateAreaVisibility(false);
+                _isSlotTrackingActive = false;
+                UpdateSlotTrackingUI(1, 1);
                 AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION, $"{_currentSelectedGroup} - Aligner selected");
             }
             else
             {
                 ShowCoordinateAreaForMenu(menuType);
+
+                // 슬롯 추적 초기화 (CPick/SPick에 대해서만)
+                InitializeSlotTracking(menuType);
             }
 
             if (!isRestoring)
@@ -2278,7 +2338,6 @@ namespace TeachingPendant.MovementUI
             try
             {
                 SaveCurrentCoordinates();
-                ProcessReverseRelationship();
                 SaveToPersistentStorage();
 
                 // 기존 알람 메시지 (변경 없음)
@@ -2690,57 +2749,6 @@ namespace TeachingPendant.MovementUI
                 System.Diagnostics.Debug.WriteLine($"[Movement] 레시피 저장 실패: {ex.Message}");
                 return false;
             }
-        }
-
-        private void ProcessReverseRelationship()
-        {
-            if (!_groupCoordinateData.ContainsKey(_currentSelectedGroup)) return;
-
-            var currentGroupAllMenuData = _groupCoordinateData[_currentSelectedGroup];
-
-            switch (_selectedGroupMenu)
-            {
-                case "CPick":
-                    if (currentGroupAllMenuData.ContainsKey("CPlace"))
-                        CreateReverseCoordinates("CPick", "CPlace", currentGroupAllMenuData);
-                    break;
-                case "CPlace":
-                    if (currentGroupAllMenuData.ContainsKey("CPick"))
-                        CreateReverseCoordinates("CPlace", "CPick", currentGroupAllMenuData);
-                    break;
-                case "SPlace":
-                    if (currentGroupAllMenuData.ContainsKey("SPick"))
-                        CreateReverseCoordinates("SPlace", "SPick", currentGroupAllMenuData);
-                    break;
-                case "SPick":
-                    if (currentGroupAllMenuData.ContainsKey("SPlace"))
-                        CreateReverseCoordinates("SPick", "SPlace", currentGroupAllMenuData);
-                    break;
-            }
-        }
-
-        private void CreateReverseCoordinates(string sourceMenuKey, string targetMenuKey, Dictionary<string, CoordinateData> groupMenuData)
-        {
-            if (!groupMenuData.ContainsKey(sourceMenuKey) || !groupMenuData.ContainsKey(targetMenuKey))
-            {
-                System.Diagnostics.Debug.WriteLine($"Reverse relationship error: Source or Target menu data not found. Source: {sourceMenuKey}, Target: {targetMenuKey}");
-                return;
-            }
-
-            CoordinateData sourceData = groupMenuData[sourceMenuKey];
-            CoordinateData targetData = groupMenuData[targetMenuKey];
-
-            targetData.P7 = CloneCoordinateArray(sourceData.P1);
-            targetData.P6 = CloneCoordinateArray(sourceData.P2);
-            targetData.P5 = CloneCoordinateArray(sourceData.P3);
-            targetData.P4 = CloneCoordinateArray(sourceData.P4);
-            targetData.P3 = CloneCoordinateArray(sourceData.P5);
-            targetData.P2 = CloneCoordinateArray(sourceData.P6);
-            targetData.P1 = CloneCoordinateArray(sourceData.P7);
-
-            AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
-                $"{_currentSelectedGroup}: {sourceMenuKey} saved, reverse relationship applied to {targetMenuKey}.");
-            System.Diagnostics.Debug.WriteLine($"Reverse coordinates applied: {sourceMenuKey} -> {targetMenuKey} for group {_currentSelectedGroup}");
         }
 
         private void SaveAllGroupData()
@@ -3627,6 +3635,958 @@ namespace TeachingPendant.MovementUI
             }
         }
 
+        #endregion
+
+        #region P3 Dynamic Coordinate Calculation
+        /// <summary>
+        /// P3에 Teaching 기본 좌표 설정 (UI 표시용만, 저장하지 않음)
+        /// </summary>
+        private void SetP3BaseCoordinates(string groupName, string menuType, TeachingStageInfo teachingData)
+        {
+            try
+            {
+                if (!_groupCoordinateData.ContainsKey(groupName) ||
+                    !_groupCoordinateData[groupName].ContainsKey(menuType))
+                {
+                    System.Diagnostics.Debug.WriteLine($"좌표 데이터가 존재하지 않음: {groupName} - {menuType}");
+                    return;
+                }
+
+                var coordData = _groupCoordinateData[groupName][menuType];
+
+                // P3에 Teaching 좌표 설정 (첫 번째 슬롯 위치) - 임시로만 설정
+                coordData.P3[0] = teachingData.PositionA.ToString("F2"); // A축
+                coordData.P3[1] = teachingData.PositionT.ToString("F2"); // T축
+                coordData.P3[2] = teachingData.PositionZ.ToString("F2"); // Z축 (기본 위치)
+                                                                         // coordData.P3[3] = Speed는 기존 값 유지
+
+                System.Diagnostics.Debug.WriteLine($"P3 기본 좌표 설정 (임시): A={teachingData.PositionA}, T={teachingData.PositionT}, Z={teachingData.PositionZ}");
+
+                // 현재 UI에 표시 중인 메뉴라면 즉시 업데이트 (UI만 업데이트, 데이터는 저장 안함)
+                if (_selectedGroupMenu == menuType)
+                {
+                    LoadCoordinatesForMenuWithoutSave(menuType);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SetP3BaseCoordinates 오류: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 메뉴 좌표 로드 (저장하지 않는 버전)
+        /// </summary>
+        private void LoadCoordinatesForMenuWithoutSave(string menuType)
+        {
+            try
+            {
+                if (!ValidateCoordinateLoad(menuType)) return;
+
+                var coordData = _groupCoordinateData[_currentSelectedGroup][menuType];
+
+                // UI TextBox들만 업데이트 (데이터는 임시로 이미 설정됨)
+                LoadCoordinateSet(new[] { txtP1A, txtP1T, txtP1Z, txtP1Speed }, coordData.P1);
+                LoadCoordinateSet(new[] { txtP2A, txtP2T, txtP2Z, txtP2Speed }, coordData.P2);
+                LoadCoordinateSet(new[] { txtP3A, txtP3T, txtP3Z, txtP3Speed }, coordData.P3);
+                LoadCoordinateSet(new[] { txtP4A, txtP4T, txtP4Z, txtP4Speed }, coordData.P4);
+                LoadCoordinateSet(new[] { txtP5A, txtP5T, txtP5Z, txtP5Speed }, coordData.P5);
+                LoadCoordinateSet(new[] { txtP6A, txtP6T, txtP6Z, txtP6Speed }, coordData.P6);
+                LoadCoordinateSet(new[] { txtP7A, txtP7T, txtP7Z, txtP7Speed }, coordData.P7);
+
+                System.Diagnostics.Debug.WriteLine($"UI만 업데이트됨 (저장 안함): {_currentSelectedGroup} - {menuType}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadCoordinatesForMenuWithoutSave 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Teaching 데이터를 기반으로 P3 좌표의 슬롯별 동적 계산 기능 활성화
+        /// </summary>
+        private void EnableP3DynamicCalculation(string menuType, string groupName)
+        {
+            try
+            {
+                // CPick, SPick에만 적용 (실제 Pick 동작)
+                if (menuType != "CPick" && menuType != "SPick")
+                {
+                    return;
+                }
+
+                var teachingData = GetTeachingDataForMenu(groupName, menuType);
+                if (teachingData == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Teaching 데이터를 찾을 수 없음: {groupName} - {menuType}");
+                    return;
+                }
+
+                // 저장된 P3 좌표를 복원하고 Teaching 데이터로 임시 덮어쓰기
+                RestoreOriginalP3AndApplyTeaching(groupName, menuType, teachingData);
+
+                System.Diagnostics.Debug.WriteLine($"P3 동적 계산 활성화: {menuType} - SlotCount={teachingData.SlotCount}, Pitch={teachingData.Pitch}");
+
+                AlarmMessageManager.ShowAlarm(Alarms.OPERATION_COMPLETED,
+                    $"{menuType} P3 동적 좌표 활성화 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"EnableP3DynamicCalculation 오류: {ex.Message}");
+                AlarmMessageManager.ShowAlarm(Alarms.DATA_ERROR, $"P3 동적 계산 설정 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 원본 P3 좌표 복원 후 Teaching 데이터 임시 적용
+        /// </summary>
+        private void RestoreOriginalP3AndApplyTeaching(string groupName, string menuType, TeachingStageInfo teachingData)
+        {
+            try
+            {
+                if (!_groupCoordinateData.ContainsKey(groupName) ||
+                    !_groupCoordinateData[groupName].ContainsKey(menuType))
+                {
+                    System.Diagnostics.Debug.WriteLine($"좌표 데이터가 존재하지 않음: {groupName} - {menuType}");
+                    return;
+                }
+
+                var coordData = _groupCoordinateData[groupName][menuType];
+
+                // 원본 P3 좌표 백업 (필요시)
+                string originalA = coordData.P3[0];
+                string originalT = coordData.P3[1];
+                string originalZ = coordData.P3[2];
+                string originalSpeed = coordData.P3[3];
+
+                // Teaching 데이터로 임시 설정 (메모리에만, 저장 안함)
+                coordData.P3[0] = teachingData.PositionA.ToString("F2");
+                coordData.P3[1] = teachingData.PositionT.ToString("F2");
+                coordData.P3[2] = teachingData.PositionZ.ToString("F2");
+                // Speed는 유지
+
+                System.Diagnostics.Debug.WriteLine($"P3 임시 덮어쓰기: 원본({originalA}, {originalT}, {originalZ}) → Teaching({teachingData.PositionA}, {teachingData.PositionT}, {teachingData.PositionZ})");
+
+                // UI만 업데이트 (저장하지 않음)
+                if (_selectedGroupMenu == menuType)
+                {
+                    LoadCoordinatesForMenuWithoutSave(menuType);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RestoreOriginalP3AndApplyTeaching 오류: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Teaching 시스템에서 메뉴별 데이터 가져오기
+        /// </summary>
+        private TeachingStageInfo GetTeachingDataForMenu(string groupName, string menuType)
+        {
+            try
+            {
+                // Teaching의 정적 데이터에 접근
+                var teachingData = TeachingUI.Teaching.GetStageDataForGroup(groupName);
+
+                if (teachingData == null || teachingData.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Teaching 그룹 데이터가 비어있음: {groupName}");
+                    return null;
+                }
+
+                // CPick은 Cassette 데이터, SPick은 Stage 데이터 사용
+                string targetType = menuType == "CPick" ? "Cassette" : "Stage";
+
+                // 현재 선택된 번호에 해당하는 데이터 찾기
+                int selectedNumber = GetSelectedNumberForMenu(groupName, menuType);
+                string targetItemName = $"{targetType} {selectedNumber}";
+
+                if (teachingData.ContainsKey(targetItemName))
+                {
+                    var data = teachingData[targetItemName];
+                    return new TeachingStageInfo
+                    {
+                        SlotCount = data.SlotCount,
+                        Pitch = data.Pitch,
+                        PickOffset = data.PickOffset,
+                        PickDown = data.PickDown,
+                        PickUp = data.PickUp,
+                        PlaceDown = data.PlaceDown,
+                        PlaceUp = data.PlaceUp,
+                        PositionA = data.PositionA,
+                        PositionT = data.PositionT,
+                        PositionZ = data.PositionZ,
+                        ItemType = targetType
+                    };
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching 데이터를 찾을 수 없음: {targetItemName}");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetTeachingDataForMenu 오류: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 현재 메뉴에서 선택된 카세트/스테이지 번호 가져오기
+        /// </summary>
+        private int GetSelectedNumberForMenu(string groupName, string menuType)
+        {
+            try
+            {
+                if (_groupMenuSelectedNumbers.ContainsKey(groupName) &&
+                    _groupMenuSelectedNumbers[groupName].ContainsKey(menuType))
+                {
+                    return _groupMenuSelectedNumbers[groupName][menuType];
+                }
+
+                return 1; // 기본값
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetSelectedNumberForMenu 오류: {ex.Message}");
+                return 1;
+            }
+        }
+
+        /// <summary>
+        /// 특정 슬롯 번호에 대한 P3 좌표 계산 (런타임 계산)
+        /// </summary>
+        public decimal[] CalculateP3CoordinatesForSlot(string groupName, string menuType, int slotNumber)
+        {
+            try
+            {
+                // Teaching 데이터 가져오기
+                var teachingData = GetTeachingDataForMenu(groupName, menuType);
+                if (teachingData == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Teaching 데이터 없음: {groupName} - {menuType}");
+                    return new decimal[] { 0, 0, 0 };
+                }
+
+                // 슬롯 번호 유효성 검사
+                if (slotNumber < 1 || slotNumber > teachingData.SlotCount)
+                {
+                    System.Diagnostics.Debug.WriteLine($"유효하지 않은 슬롯 번호: {slotNumber} (최대: {teachingData.SlotCount})");
+                    return new decimal[] { 0, 0, 0 };
+                }
+
+                // 기본 위치에서 슬롯별 Z 좌표 계산
+                decimal baseZ = teachingData.PositionZ;
+                decimal slotZ = baseZ + ((slotNumber - 1) * teachingData.Pitch); // 1번 슬롯은 기본 위치
+
+                decimal[] coordinates = new decimal[]
+                {
+            teachingData.PositionA, // A축 (고정)
+            teachingData.PositionT, // T축 (고정)
+            slotZ                   // Z축 (슬롯별 계산)
+                };
+
+                System.Diagnostics.Debug.WriteLine($"슬롯 {slotNumber} 좌표 계산: A={coordinates[0]}, T={coordinates[1]}, Z={coordinates[2]}");
+                return coordinates;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CalculateP3CoordinatesForSlot 오류: {ex.Message}");
+                return new decimal[] { 0, 0, 0 };
+            }
+        }
+
+        /// <summary>
+        /// 모든 슬롯에 대한 P3 좌표 목록 생성 (레시피 생성용)
+        /// </summary>
+        public List<decimal[]> GenerateAllSlotCoordinates(string groupName, string menuType)
+        {
+            var coordinateList = new List<decimal[]>();
+
+            try
+            {
+                var teachingData = GetTeachingDataForMenu(groupName, menuType);
+                if (teachingData == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Teaching 데이터 없음: {groupName} - {menuType}");
+                    return coordinateList;
+                }
+
+                // 모든 슬롯에 대해 좌표 계산
+                for (int slot = 1; slot <= teachingData.SlotCount; slot++)
+                {
+                    var coordinates = CalculateP3CoordinatesForSlot(groupName, menuType, slot);
+                    coordinateList.Add(coordinates);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"전체 슬롯 좌표 생성 완료: {coordinateList.Count}개 슬롯");
+                return coordinateList;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GenerateAllSlotCoordinates 오류: {ex.Message}");
+                return coordinateList;
+            }
+        }
+
+        /// <summary>
+        /// Teaching 데이터 변경시 P3 좌표 자동 업데이트
+        /// </summary>
+        private void OnTeachingDataUpdated(object sender, TeachingDataChangedEventArgs e)
+        {
+            try
+            {
+                // 현재 선택된 그룹과 일치하는 경우에만 처리
+                if (e.GroupName != _currentSelectedGroup)
+                {
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Teaching 데이터 업데이트 감지: {e.GroupName} - {e.ItemName}");
+
+                // Cassette 데이터 변경시 CPick P3 업데이트
+                if (e.ItemName.StartsWith("Cassette") && _selectedGroupMenu == "CPick")
+                {
+                    EnableP3DynamicCalculation("CPick", e.GroupName);
+                }
+                // Stage 데이터 변경시 SPick P3 업데이트
+                else if (e.ItemName.StartsWith("Stage") && _selectedGroupMenu == "SPick")
+                {
+                    EnableP3DynamicCalculation("SPick", e.GroupName);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"OnTeachingDataUpdated 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 메뉴 선택 변경시 P3 동적 계산 적용
+        /// </summary>
+        private void ApplyP3DynamicCalculationOnMenuChange(string menuType)
+        {
+            try
+            {
+                if (menuType == "CPick" || menuType == "SPick")
+                {
+                    EnableP3DynamicCalculation(menuType, _currentSelectedGroup);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ApplyP3DynamicCalculationOnMenuChange 오류: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Menu Selection Enhanced (메뉴 전환 시 원본 데이터 복원)
+        /// <summary>
+        /// 메뉴 선택 변경 시 처리 개선 (원본 데이터 복원 포함)
+        /// </summary>
+        private void OnMenuSelectionChangedEnhanced(string menuType)
+        {
+            try
+            {
+                // 이전 메뉴가 CPick/SPick이었다면 원본 데이터 복원
+                if (_selectedGroupMenu == "CPick" || _selectedGroupMenu == "SPick")
+                {
+                    RestoreOriginalCoordinatesForMenu(_selectedGroupMenu);
+                }
+
+                // 기존 메뉴 변경 로직
+                LoadCoordinatesForMenu(menuType);
+                UpdateCassetteStageDisplay();
+
+                // 새 메뉴가 CPick/SPick이면 Teaching 데이터 적용
+                if (menuType == "CPick" || menuType == "SPick")
+                {
+                    EnableP3DynamicCalculation(menuType, _currentSelectedGroup);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Movement: 메뉴 변경 및 Teaching 연동 완료 - {menuType}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: OnMenuSelectionChangedEnhanced 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 특정 메뉴의 원본 좌표 데이터 복원 (저장된 값으로)
+        /// </summary>
+        private void RestoreOriginalCoordinatesForMenu(string menuType)
+        {
+            try
+            {
+                if (menuType != "CPick" && menuType != "SPick") return;
+
+                // 영구 저장된 데이터에서 원본 좌표 복원
+                if (_persistentGroupCoordinateData.ContainsKey(_currentSelectedGroup) &&
+                    _persistentGroupCoordinateData[_currentSelectedGroup].ContainsKey(menuType))
+                {
+                    var originalData = _persistentGroupCoordinateData[_currentSelectedGroup][menuType];
+                    var currentData = _groupCoordinateData[_currentSelectedGroup][menuType];
+
+                    // P3만 원본으로 복원
+                    Array.Copy(originalData.P3, currentData.P3, originalData.P3.Length);
+
+                    System.Diagnostics.Debug.WriteLine($"{menuType} P3 원본 좌표 복원됨");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RestoreOriginalCoordinatesForMenu 오류: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Public Interface for External Access
+        /// <summary>
+        /// 외부에서 특정 슬롯의 P3 좌표를 요청할 때 사용
+        /// </summary>
+        public static decimal[] GetP3CoordinatesForSlot(string groupName, string menuType, int slotNumber)
+        {
+            try
+            {
+                var instance = GetCurrentInstance();
+                if (instance != null)
+                {
+                    return instance.CalculateP3CoordinatesForSlot(groupName, menuType, slotNumber);
+                }
+
+                System.Diagnostics.Debug.WriteLine("Movement 인스턴스를 찾을 수 없음");
+                return new decimal[] { 0, 0, 0 };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetP3CoordinatesForSlot 정적 메서드 오류: {ex.Message}");
+                return new decimal[] { 0, 0, 0 };
+            }
+        }
+
+        /// <summary>
+        /// 외부에서 모든 슬롯 좌표를 요청할 때 사용
+        /// </summary>
+        public static List<decimal[]> GetAllSlotCoordinates(string groupName, string menuType)
+        {
+            try
+            {
+                var instance = GetCurrentInstance();
+                if (instance != null)
+                {
+                    return instance.GenerateAllSlotCoordinates(groupName, menuType);
+                }
+
+                System.Diagnostics.Debug.WriteLine("Movement 인스턴스를 찾을 수 없음");
+                return new List<decimal[]>();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GetAllSlotCoordinates 정적 메서드 오류: {ex.Message}");
+                return new List<decimal[]>();
+            }
+        }
+        #endregion
+
+        #region Data Classes for Teaching Integration
+        /// <summary>
+        /// Teaching 데이터 정보를 담는 클래스
+        /// </summary>
+        public class TeachingStageInfo
+        {
+            public int SlotCount { get; set; } = 1;
+            public int Pitch { get; set; } = 1;
+            public int PickOffset { get; set; } = 1;
+            public int PickDown { get; set; } = 1;
+            public int PickUp { get; set; } = 1;
+            public int PlaceDown { get; set; } = 1;
+            public int PlaceUp { get; set; } = 1;
+            public decimal PositionA { get; set; } = 0.00m;
+            public decimal PositionT { get; set; } = 0.00m;
+            public decimal PositionZ { get; set; } = 0.00m;
+            public string ItemType { get; set; } = ""; // "Cassette" 또는 "Stage"
+        }
+
+        /// <summary>
+        /// Teaching 데이터 변경 이벤트 인자
+        /// </summary>
+        public class TeachingDataChangedEventArgs : EventArgs
+        {
+            public string GroupName { get; private set; }
+            public string ItemName { get; private set; }
+            public TeachingStageInfo UpdatedData { get; private set; }
+
+            public TeachingDataChangedEventArgs(string groupName, string itemName, TeachingStageInfo data)
+            {
+                GroupName = groupName;
+                ItemName = itemName;
+                UpdatedData = data;
+            }
+        }
+        #endregion
+
+        #region Static Instance Management
+        // 현재 활성 Movement 인스턴스 관리
+        private static Movement _currentInstance = null;
+
+        /// <summary>
+        /// 현재 활성 Movement 인스턴스 반환 (정적 메서드)
+        /// </summary>
+        /// <returns>현재 Movement 인스턴스</returns>
+        public static Movement GetCurrentInstance()
+        {
+            try
+            {
+                // 기존에 등록된 인스턴스가 있고 유효하면 반환
+                if (_currentInstance != null && _currentInstance.IsLoaded)
+                {
+                    System.Diagnostics.Debug.WriteLine("Movement: 기존 인스턴스 반환");
+                    return _currentInstance;
+                }
+
+                // CommonFrame을 통해 현재 활성 Movement 인스턴스 찾기
+                var frames = Application.Current?.Windows?.OfType<Window>()
+                    ?.SelectMany(w => FindVisualChildren<CommonFrame>(w));
+
+                if (frames != null)
+                {
+                    foreach (var frame in frames)
+                    {
+                        if (frame.MainContentArea?.Content is Movement movement)
+                        {
+                            _currentInstance = movement;
+                            System.Diagnostics.Debug.WriteLine("Movement: Visual Tree에서 인스턴스 찾음");
+                            return movement;
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("Movement: 인스턴스를 찾을 수 없음");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: GetCurrentInstance 오류 - {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Movement 인스턴스 등록
+        /// </summary>
+        /// <param name="instance">등록할 Movement 인스턴스</param>
+        public static void RegisterInstance(Movement instance)
+        {
+            try
+            {
+                _currentInstance = instance;
+                System.Diagnostics.Debug.WriteLine("Movement: 인스턴스 등록됨");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: RegisterInstance 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Movement 인스턴스 등록 해제
+        /// </summary>
+        public static void UnregisterInstance()
+        {
+            try
+            {
+                _currentInstance = null;
+                System.Diagnostics.Debug.WriteLine("Movement: 인스턴스 등록 해제됨");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: UnregisterInstance 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Visual Tree에서 특정 타입의 자식 요소 찾기
+        /// </summary>
+        /// <typeparam name="T">찾을 요소 타입</typeparam>
+        /// <param name="depObj">상위 DependencyObject</param>
+        /// <returns>찾은 요소들</returns>
+        private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+        {
+            if (depObj != null)
+            {
+                for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                    if (child != null && child is T)
+                    {
+                        yield return (T)child;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
+                }
+            }
+        }
+        #endregion
+
+        #region Teaching Integration Methods
+        /// <summary>
+        /// Teaching과의 연동 초기화
+        /// </summary>
+        private void InitializeTeachingIntegration()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Movement: Teaching 연동 초기화 시작");
+
+                // 현재 그룹의 CPick, SPick 메뉴에 대해 P3 동적 계산 적용
+                var pickMenus = new[] { "CPick", "SPick" };
+
+                foreach (string menuType in pickMenus)
+                {
+                    if (_groupCoordinateData.ContainsKey(_currentSelectedGroup) &&
+                        _groupCoordinateData[_currentSelectedGroup].ContainsKey(menuType))
+                    {
+                        ApplyP3DynamicCalculationOnMenuChange(menuType);
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("Movement: Teaching 연동 초기화 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 연동 초기화 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Teaching 이벤트 구독
+        /// </summary>
+        private void SubscribeToTeachingEvents()
+        {
+            try
+            {
+                // Teaching의 데이터 변경 이벤트 구독 (향후 Teaching에서 이벤트 제공 시 사용)
+                System.Diagnostics.Debug.WriteLine("Movement: Teaching 이벤트 구독 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 이벤트 구독 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Teaching 이벤트 구독 해제
+        /// </summary>
+        private void UnsubscribeFromTeachingEvents()
+        {
+            try
+            {
+                // Teaching 이벤트 구독 해제 로직
+                System.Diagnostics.Debug.WriteLine("Movement: Teaching 이벤트 구독 해제 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 이벤트 구독 해제 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 메뉴 선택 변경 시 Teaching 연동 처리 (기존 메서드 개선)
+        /// </summary>
+        private void OnMenuSelectionChanged(string menuType)
+        {
+            try
+            {
+                // 기존 메뉴 변경 로직...
+                LoadCoordinatesForMenu(menuType);
+                UpdateCassetteStageDisplay();
+
+                // Teaching과의 P3 동적 계산 적용
+                if (menuType == "CPick" || menuType == "SPick")
+                {
+                    ApplyP3DynamicCalculationOnMenuChange(menuType);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Movement: 메뉴 변경 및 Teaching 연동 완료 - {menuType}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: OnMenuSelectionChanged 오류 - {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Teaching Data Integration Helper Methods
+        /// <summary>
+        /// 현재 그룹의 Teaching 데이터와 동기화
+        /// </summary>
+        private void SynchronizeWithTeachingData()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 데이터 동기화 시작 - {_currentSelectedGroup}");
+
+                // Teaching에서 현재 그룹의 데이터 가져오기
+                var teachingData = TeachingUI.Teaching.GetStageDataForGroup(_currentSelectedGroup);
+
+                if (teachingData != null && teachingData.Count > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Movement: Teaching 데이터 {teachingData.Count}개 발견");
+
+                    // CPick, SPick 메뉴에 대해 P3 동적 계산 적용
+                    if (_selectedGroupMenu == "CPick" || _selectedGroupMenu == "SPick")
+                    {
+                        EnableP3DynamicCalculation(_selectedGroupMenu, _currentSelectedGroup);
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("Movement: Teaching 데이터가 없음");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 데이터 동기화 오류 - {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Teaching 데이터 유효성 확인
+        /// </summary>
+        /// <param name="groupName">그룹명</param>
+        /// <param name="menuType">메뉴 타입</param>
+        /// <returns>유효 여부</returns>
+        private bool IsTeachingDataValid(string groupName, string menuType)
+        {
+            try
+            {
+                var teachingData = GetTeachingDataForMenu(groupName, menuType);
+                return teachingData != null && teachingData.SlotCount > 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: Teaching 데이터 유효성 확인 오류 - {ex.Message}");
+                return false;
+            }
+        }
+        #endregion
+
+        #region Slot Tracking for Dynamic P3 Calculation
+        // 슬롯 추적 변수들
+        private int _currentSlotNumber = 1;
+        private int _totalSlotCount = 1;
+        private bool _isSlotTrackingActive = false;
+
+        /// <summary>
+        /// 슬롯 추적 초기화 (CPick 또는 SPick 선택 시)
+        /// </summary>
+        private void InitializeSlotTracking(string menuType)
+        {
+            try
+            {
+                if (menuType != "CPick" && menuType != "SPick")
+                {
+                    _isSlotTrackingActive = false;
+                    UpdateSlotTrackingUI(1, 1);
+                    return;
+                }
+
+                // Teaching 데이터에서 슬롯 정보 가져오기
+                var teachingData = GetTeachingDataForMenu(_currentSelectedGroup, menuType);
+                if (teachingData != null)
+                {
+                    _totalSlotCount = teachingData.SlotCount;
+                    _currentSlotNumber = 1; // 시작은 항상 1번 슬롯
+                    _isSlotTrackingActive = true;
+
+                    System.Diagnostics.Debug.WriteLine($"슬롯 추적 초기화: {menuType} - 총 {_totalSlotCount}개 슬롯");
+                }
+                else
+                {
+                    _totalSlotCount = 1;
+                    _currentSlotNumber = 1;
+                    _isSlotTrackingActive = false;
+
+                    System.Diagnostics.Debug.WriteLine($"Teaching 데이터 없음, 기본 슬롯 설정: {menuType}");
+                }
+
+                UpdateSlotTrackingUI(_currentSlotNumber, _totalSlotCount);
+
+                // 현재 슬롯에 맞는 P3 좌표 계산 및 적용
+                if (_isSlotTrackingActive)
+                {
+                    ApplyP3CoordinatesForCurrentSlot(menuType);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"InitializeSlotTracking 오류: {ex.Message}");
+                _isSlotTrackingActive = false;
+                UpdateSlotTrackingUI(1, 1);
+            }
+        }
+
+        /// <summary>
+        /// 슬롯 추적 UI 업데이트
+        /// </summary>
+        private void UpdateSlotTrackingUI(int currentSlot, int totalSlots)
+        {
+            try
+            {
+                if (txtCurrentSlot != null)
+                    txtCurrentSlot.Text = currentSlot.ToString();
+
+                if (txtTotalSlots != null)
+                    txtTotalSlots.Text = totalSlots.ToString();
+
+                System.Diagnostics.Debug.WriteLine($"슬롯 UI 업데이트: {currentSlot}/{totalSlots}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateSlotTrackingUI 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 현재 슬롯에 맞는 P3 좌표 계산 및 적용
+        /// </summary>
+        private void ApplyP3CoordinatesForCurrentSlot(string menuType)
+        {
+            try
+            {
+                if (!_isSlotTrackingActive) return;
+
+                // Teaching 데이터 가져오기
+                var teachingData = GetTeachingDataForMenu(_currentSelectedGroup, menuType);
+                if (teachingData == null) return;
+
+                // 현재 슬롯의 P3 좌표 계산
+                decimal slotZ = teachingData.PositionZ + ((_currentSlotNumber - 1) * teachingData.Pitch);
+
+                // P3 좌표 업데이트 (임시로, 저장하지 않음)
+                if (_groupCoordinateData.ContainsKey(_currentSelectedGroup) &&
+                    _groupCoordinateData[_currentSelectedGroup].ContainsKey(menuType))
+                {
+                    var coordData = _groupCoordinateData[_currentSelectedGroup][menuType];
+
+                    // P3 Z 좌표만 슬롯별로 업데이트
+                    coordData.P3[0] = teachingData.PositionA.ToString("F2"); // A축
+                    coordData.P3[1] = teachingData.PositionT.ToString("F2"); // T축
+                    coordData.P3[2] = slotZ.ToString("F2"); // Z축 (슬롯별 계산)
+                                                            // Speed는 기존 값 유지
+
+                    System.Diagnostics.Debug.WriteLine($"슬롯 {_currentSlotNumber} P3 좌표 적용: A={teachingData.PositionA}, T={teachingData.PositionT}, Z={slotZ:F2}");
+
+                    // UI 업데이트 (현재 선택된 메뉴인 경우)
+                    if (_selectedGroupMenu == menuType)
+                    {
+                        LoadCoordinatesForMenuWithoutSave(menuType);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ApplyP3CoordinatesForCurrentSlot 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 다음 슬롯으로 이동 (자동 실행 시 호출)
+        /// </summary>
+        public void MoveToNextSlot()
+        {
+            try
+            {
+                if (!_isSlotTrackingActive) return;
+
+                if (_currentSlotNumber < _totalSlotCount)
+                {
+                    _currentSlotNumber++;
+                    System.Diagnostics.Debug.WriteLine($"다음 슬롯으로 이동: {_currentSlotNumber}/{_totalSlotCount}");
+                }
+                else
+                {
+                    // 마지막 슬롯에 도달하면 1번으로 리셋
+                    _currentSlotNumber = 1;
+                    System.Diagnostics.Debug.WriteLine($"마지막 슬롯 완료, 1번으로 리셋: {_currentSlotNumber}/{_totalSlotCount}");
+                }
+
+                UpdateSlotTrackingUI(_currentSlotNumber, _totalSlotCount);
+
+                // 새 슬롯에 맞는 P3 좌표 적용
+                if (_selectedGroupMenu == "CPick" || _selectedGroupMenu == "SPick")
+                {
+                    ApplyP3CoordinatesForCurrentSlot(_selectedGroupMenu);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MoveToNextSlot 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 슬롯 리셋 (처음부터 시작)
+        /// </summary>
+        public void ResetSlotTracking()
+        {
+            try
+            {
+                _currentSlotNumber = 1;
+                UpdateSlotTrackingUI(_currentSlotNumber, _totalSlotCount);
+
+                // 첫 번째 슬롯 좌표 적용
+                if (_isSlotTrackingActive && (_selectedGroupMenu == "CPick" || _selectedGroupMenu == "SPick"))
+                {
+                    ApplyP3CoordinatesForCurrentSlot(_selectedGroupMenu);
+                }
+
+                System.Diagnostics.Debug.WriteLine("슬롯 추적 리셋됨");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ResetSlotTracking 오류: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Auto Execution Enhanced with Slot Tracking
+        private void InitializeAutoExecution()
+        {
+            _autoExecutionTimer = new DispatcherTimer();
+
+            // Speed에 따라 타이머 간격 조정
+            UpdateTimerInterval();
+
+            // 이벤트 핸들러 연결 확인
+            _autoExecutionTimer.Tick += AutoExecutionTimer_Tick;
+
+            // 초기 상태 설정
+            _currentR = 0.00m;
+            _currentT = 0.00m;
+            _currentA = 0.00m;
+
+            UpdateAutoStatusDisplay();
+
+            System.Diagnostics.Debug.WriteLine("Movement: AutoExecution 초기화 완료");
+        }
+
+        /// <summary>
+        /// 목표 지점 도달 확인
+        /// </summary>
+        private bool HasReachedTarget()
+        {
+            const decimal tolerance = 0.1m;
+            return Math.Abs(_currentR - _targetR) < tolerance &&
+                   Math.Abs(_currentT - _targetT) < tolerance &&
+                   Math.Abs(_currentA - _targetA) < tolerance;
+        }
         #endregion
     }
 
