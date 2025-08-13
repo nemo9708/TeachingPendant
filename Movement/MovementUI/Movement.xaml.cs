@@ -49,7 +49,8 @@ namespace TeachingPendant.MovementUI
         private decimal _currentT = 0.00m;
         private decimal _currentA = 0.00m;
         private decimal _targetR, _targetT, _targetA;
-        private const decimal COORDINATE_STEP = 1.0m; // 5씩 증가
+        private const decimal COORDINATE_STEP = 1.0m; // 1씩 증가
+        private const decimal COORDINATE_TOLERANCE = 0.1m; // 도달 허용 오차 0.1
 
         // Wait 기능 추가
         private bool _isWaiting = false;
@@ -458,12 +459,28 @@ namespace TeachingPendant.MovementUI
 
         private void Movement_Loaded(object sender, RoutedEventArgs e)
         {
-            ShowGroupListView();
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("=== Movement_Loaded 시작 ===");
 
-            // Teaching과의 초기 동기화
-            InitializeTeachingIntegration();
+                // 포커스 설정 (기존)
+                this.Focus();
 
-            AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION, "Movement UI loaded successfully");
+                // UI 요소 검증 추가
+                ValidateUIElements();
+
+                // 초기 Current 좌표 표시
+                UpdateCurrentCoordinateDisplay();
+
+                // 슬롯 UI 초기화
+                UpdateSlotTrackingUI(1, 1);
+
+                System.Diagnostics.Debug.WriteLine("=== Movement_Loaded 완료 ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement_Loaded 오류: {ex.Message}");
+            }
         }
 
         // 타이머 간격 업데이트 메서드 추가
@@ -490,47 +507,21 @@ namespace TeachingPendant.MovementUI
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("Movement: 자동 실행 시작 요청");
-
-                // 1. 기존 모드 확인
-                if (!GlobalModeManager.IsEditingAllowed)
+                // 권한 확인 - Auto 모드에서만 자동 실행 허용
+                if (!GlobalModeManager.IsAutoMode)
                 {
                     AlarmMessageManager.ShowAlarm(Alarms.OPERATION_LIMIT,
-                        "Auto execution only available in Manual mode");
+                        "Auto execution requires Auto mode");
                     return;
                 }
 
-                if (string.IsNullOrEmpty(_currentSelectedGroup))
+                // 이미 실행 중인 경우 중복 시작 방지
+                if (_isAutoExecutionRunning)
                 {
-                    AlarmMessageManager.ShowAlarm(Alarms.UNEXPECTED_STATE,
-                        "Please select a group first");
+                    AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
+                        "Auto execution is already running");
                     return;
                 }
-
-                // 2. 안전 확인 추가 (새로 추가)
-                if (!CheckSafetyBeforeMovement())
-                {
-                    System.Diagnostics.Debug.WriteLine("Movement: 기본 안전 확인 실패로 자동 실행 중단");
-                    return;
-                }
-
-                // 3. 선택된 메뉴에 따른 위치별 안전 확인 (새로 추가)
-                if (!CheckLocationSafetyForMenu(_selectedGroupMenu))
-                {
-                    System.Diagnostics.Debug.WriteLine("Movement: 위치별 안전 확인 실패로 자동 실행 중단");
-                    return;
-                }
-
-                // 4. 동작 유형별 안전 허용 확인 (새로 추가)
-                if (!IsSafetyAllowedForOperation("Auto"))
-                {
-                    System.Diagnostics.Debug.WriteLine("Movement: 자동 동작 안전 허용 실패로 자동 실행 중단");
-                    return;
-                }
-
-                // 5. 안전 확인 통과 - 자동 실행 시작
-                System.Diagnostics.Debug.WriteLine("Movement: 모든 안전 확인 통과, 자동 실행 시작");
-                ShowInterlockStatus(); // 현재 상태 로깅
 
                 StartAutoExecution();
 
@@ -539,9 +530,7 @@ namespace TeachingPendant.MovementUI
                 IOController.SetOutput("Red Light", false);    // DO07 OFF
                 IOController.SetOutput("Buzzer", false);       // DO08 OFF
 
-                // 안전 확인 완료 메시지 (새로 추가)
-                AlarmMessageManager.ShowAlarm(Alarms.STATUS_UPDATE,
-                    "자동 실행이 안전하게 시작되었습니다.");
+                System.Diagnostics.Debug.WriteLine("자동 실행 시작됨");
             }
             catch (Exception ex)
             {
@@ -565,15 +554,18 @@ namespace TeachingPendant.MovementUI
         private void StartAutoExecution()
         {
             _isAutoExecutionRunning = true;
-            _currentSequenceIndex = 0;
-            _currentPointIndex = 0;
+            _currentSequenceIndex = 0; // CPick부터 시작
+            _currentPointIndex = 0;    // P1부터 시작
 
-            // 초기 좌표를 현재 위치로 설정 (또는 0,0,0으로 초기화)
+            // 초기 좌표를 Home Position 또는 0,0,0으로 설정
             _currentR = 0.00m;
             _currentT = 0.00m;
             _currentA = 0.00m;
 
+            // 첫 번째 목표 좌표 설정 (CPick P1)
             SetNextTarget();
+
+            // 타이머 시작
             _autoExecutionTimer.Start();
 
             UpdateAutoStatusDisplay();
@@ -584,7 +576,9 @@ namespace TeachingPendant.MovementUI
             RemoteExecutionStatusChanged?.Invoke(this, true);
 
             AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
-                "Auto execution started - C PICK P1");
+                "Auto execution started - CPick P1");
+
+            System.Diagnostics.Debug.WriteLine("자동 실행 시작: CPick P1으로 이동 시작");
         }
 
         // 자동 실행 중지
@@ -620,10 +614,43 @@ namespace TeachingPendant.MovementUI
                     decimal.TryParse(targetCoords[1], out _targetT) &&
                     decimal.TryParse(targetCoords[2], out _targetA))
                 {
-                    // 목표 설정 완료
-                    System.Diagnostics.Debug.WriteLine($"Next target: {currentMenu} {pointName} - R:{_targetR}, T:{_targetT}, A:{_targetA}");
+                    // 기본 목표 설정 완료
+                    System.Diagnostics.Debug.WriteLine($"목표 좌표 설정: {currentMenu} {pointName} - R:{_targetR}, T:{_targetT}, A:{_targetA}");
+
+                    // CPick/SPick의 P3에서만 슬롯별 Z 좌표 동적 계산
+                    if ((currentMenu == "CPick" || currentMenu == "SPick") &&
+                        _isSlotTrackingActive &&
+                        _currentPointIndex == 2) // P3일 때만
+                    {
+                        var teachingData = GetTeachingDataForMenu(_currentSelectedGroup, currentMenu);
+                        if (teachingData != null)
+                        {
+                            decimal slotZ = teachingData.PositionZ + ((_currentSlotNumber - 1) * teachingData.Pitch);
+                            _targetA = slotZ; // A축이 Z축 역할
+                            System.Diagnostics.Debug.WriteLine($"슬롯 {_currentSlotNumber} 동적 Z 좌표 적용: {slotZ:F2}");
+                        }
+                    }
+                }
+                else
+                {
+                    // 좌표 파싱 실패 시 기본값
+                    _targetR = 0.00m;
+                    _targetT = 0.00m;
+                    _targetA = 0.00m;
+                    System.Diagnostics.Debug.WriteLine($"좌표 파싱 실패, 기본값 사용: {currentMenu} {pointName}");
                 }
             }
+            else
+            {
+                // 메뉴 데이터가 없는 경우 기본값
+                _targetR = 0.00m;
+                _targetT = 0.00m;
+                _targetA = 0.00m;
+                System.Diagnostics.Debug.WriteLine($"메뉴 데이터 없음, 기본값 사용: {currentMenu} {pointName}");
+            }
+
+            // 자동 상태 표시 업데이트
+            UpdateAutoStatusDisplay();
         }
 
         // 좌표 배열에서 특정 포인트 가져오기
@@ -662,33 +689,18 @@ namespace TeachingPendant.MovementUI
                 return; // 대기 중이면 좌표 이동하지 않음
             }
 
-            // 각 축별로 1씩 증가하여 목표에 도달 (기존 로직)
+            // 각 축별로 1씩 증가하여 목표에 도달
             bool rReached = MoveToTarget(ref _currentR, _targetR);
             bool tReached = MoveToTarget(ref _currentT, _targetT);
             bool aReached = MoveToTarget(ref _currentA, _targetA);
 
-            // 현재 좌표 UI 업데이트 (기존 메서드 사용)
+            // 현재 좌표 UI 업데이트 (매 틱마다 호출)
             UpdateCurrentCoordinateDisplay();
 
-            // 모든 축이 목표에 도달했으면 처리 (기존 + 슬롯 추적 로직 추가)
+            // 모든 축이 목표에 도달했으면 처리 (단순화)
             if (rReached && tReached && aReached)
             {
-                // 슬롯 추적 로직은 CPick에서만 실행
-                string currentMenu = _executionSequence[_currentSequenceIndex];
-                if (currentMenu == "CPick" && _isSlotTrackingActive)
-                {
-                    System.Diagnostics.Debug.WriteLine($"CPick 완료 - 슬롯 {_currentSlotNumber} 처리됨");
-                    MoveToNextSlot();
-                    ApplyP3CoordinatesForCurrentSlot("CPick");
-                    _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
-                    _currentPointIndex = 0;
-                    SetNextTarget();
-                }
-                else
-                {
-                    // 기존 대기 시작 로직
-                    StartWait();
-                }
+                StartWait(); // 항상 1초 대기 후 MoveToNextPoint에서 처리
             }
         }
 
@@ -707,15 +719,21 @@ namespace TeachingPendant.MovementUI
             System.Diagnostics.Debug.WriteLine($"포인트 도달 후 1초 대기 시작: {currentMenu} {pointName}");
         }
 
-        // 목표 좌표로 이동 (5씩 증가)
+        /// <summary>
+        /// 목표 좌표로 이동 (허용 오차 0.1 사용)
+        /// </summary>
         private bool MoveToTarget(ref decimal current, decimal target)
         {
-            if (Math.Abs(current - target) <= COORDINATE_STEP)
+            const decimal TOLERANCE = 0.1m; // 도달 허용 오차
+
+            // 허용 오차 범위 내에 있으면 목표 도달
+            if (Math.Abs(current - target) <= TOLERANCE)
             {
-                current = target; // 목표 도달
+                current = target; // 정확히 목표 위치로 설정
                 return true;
             }
 
+            // 1씩 이동 (COORDINATE_STEP = 1.0m)
             if (current < target)
                 current += COORDINATE_STEP;
             else
@@ -729,28 +747,28 @@ namespace TeachingPendant.MovementUI
         {
             string currentMenu = _executionSequence[_currentSequenceIndex];
 
-            // CPick에서 슬롯 추적이 활성화된 경우 특별 처리
-            if (currentMenu == "CPick" && _isSlotTrackingActive)
-            {
-                // CPick은 항상 P3만 사용하므로 다음 메뉴로 이동
-                _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
-                _currentPointIndex = 0; // 다음 메뉴는 P1부터 시작
+            // 모든 메뉴에서 P1 → P2 → P3 → ... → P7 순차 이동
+            _currentPointIndex++;
 
-                System.Diagnostics.Debug.WriteLine($"CPick 완료, 다음 메뉴로 이동: {_executionSequence[_currentSequenceIndex]}");
+            // CPick/SPick의 P3에서만 슬롯 처리 (다음 메뉴로 넘어가지 않음)
+            if ((currentMenu == "CPick" || currentMenu == "SPick") &&
+                _isSlotTrackingActive &&
+                _currentPointIndex == 3) // P3 완료 후 (_currentPointIndex가 이미 +1 되어 3이 됨)
+            {
+                System.Diagnostics.Debug.WriteLine($"{currentMenu} P3 완료 - 슬롯 {_currentSlotNumber} 처리됨");
+                MoveToNextSlot();
+                ApplyP3CoordinatesForCurrentSlot(currentMenu);
+                // 주의: 다음 메뉴로 넘어가지 않고 P4로 계속 진행
             }
-            else
+
+            // P7까지 갔으면 다음 메뉴로
+            if (_currentPointIndex >= 7) // P7 완료
             {
-                // 기존 로직: 포인트 순차 이동
-                _currentPointIndex++;
+                _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
+                _currentPointIndex = 0; // 다음 메뉴는 P1부터
 
-                // P7까지 갔으면 다음 메뉴로
-                if (_currentPointIndex >= 7) // P1~P7
-                {
-                    _currentSequenceIndex = (_currentSequenceIndex + 1) % _executionSequence.Length;
-                    _currentPointIndex = 0;
-
-                    System.Diagnostics.Debug.WriteLine($"포인트 완료, 다음 메뉴로 이동: {_executionSequence[_currentSequenceIndex]}");
-                }
+                string nextMenu = _executionSequence[_currentSequenceIndex];
+                System.Diagnostics.Debug.WriteLine($"{currentMenu} P7 완료, 다음 메뉴로 이동: {nextMenu}");
             }
 
             SetNextTarget();
@@ -768,15 +786,30 @@ namespace TeachingPendant.MovementUI
                     return;
                 }
 
-                if (txtCurrentR != null) txtCurrentR.Text = _currentR.ToString("F2");
-                if (txtCurrentT != null) txtCurrentT.Text = _currentT.ToString("F2");
-                if (txtCurrentA != null) txtCurrentA.Text = _currentA.ToString("F2");
+                // Current 좌표 TextBlock들이 존재하는지 확인 후 업데이트
+                if (txtCurrentR != null)
+                {
+                    txtCurrentR.Text = _currentR.ToString("F2");
+                    System.Diagnostics.Debug.WriteLine($"txtCurrentR 업데이트: {_currentR:F2}");
+                }
+
+                if (txtCurrentT != null)
+                {
+                    txtCurrentT.Text = _currentT.ToString("F2");
+                    System.Diagnostics.Debug.WriteLine($"txtCurrentT 업데이트: {_currentT:F2}");
+                }
+
+                if (txtCurrentA != null)
+                {
+                    txtCurrentA.Text = _currentA.ToString("F2");
+                    System.Diagnostics.Debug.WriteLine($"txtCurrentA 업데이트: {_currentA:F2}");
+                }
 
                 // Monitor로 좌표 전달
                 CurrentCoordinateChanged?.Invoke(this, new MovementCoordinateEventArgs(_currentR, _currentT, _currentA));
 
-                // 디버그 로그 추가 (임시)
-                System.Diagnostics.Debug.WriteLine($"Current 좌표 업데이트: R={_currentR:F2}, T={_currentT:F2}, A={_currentA:F2}");
+                // 디버그 로그
+                System.Diagnostics.Debug.WriteLine($"Current 좌표 업데이트 완료: R={_currentR:F2}, T={_currentT:F2}, A={_currentA:F2}");
             }
             catch (Exception ex)
             {
@@ -4390,22 +4423,17 @@ namespace TeachingPendant.MovementUI
         {
             try
             {
-                if (menuType != "CPick" && menuType != "SPick")
-                {
-                    _isSlotTrackingActive = false;
-                    UpdateSlotTrackingUI(1, 1);
-                    return;
-                }
+                System.Diagnostics.Debug.WriteLine($"InitializeSlotTracking 호출: {menuType}");
 
-                // Teaching 데이터에서 슬롯 정보 가져오기
+                // Teaching 데이터 가져오기
                 var teachingData = GetTeachingDataForMenu(_currentSelectedGroup, menuType);
-                if (teachingData != null)
+                if (teachingData != null && teachingData.SlotCount > 1)
                 {
                     _totalSlotCount = teachingData.SlotCount;
                     _currentSlotNumber = 1; // 시작은 항상 1번 슬롯
                     _isSlotTrackingActive = true;
 
-                    System.Diagnostics.Debug.WriteLine($"슬롯 추적 초기화: {menuType} - 총 {_totalSlotCount}개 슬롯");
+                    System.Diagnostics.Debug.WriteLine($"슬롯 추적 초기화: {menuType} - 총 {_totalSlotCount}개 슬롯, 시작 슬롯: {_currentSlotNumber}");
                 }
                 else
                 {
@@ -4416,9 +4444,10 @@ namespace TeachingPendant.MovementUI
                     System.Diagnostics.Debug.WriteLine($"Teaching 데이터 없음, 기본 슬롯 설정: {menuType}");
                 }
 
+                // 슬롯 UI 업데이트
                 UpdateSlotTrackingUI(_currentSlotNumber, _totalSlotCount);
 
-                // 현재 슬롯에 맞는 P3 좌표 계산 및 적용
+                // 첫 번째 슬롯에 맞는 P3 좌표 계산 및 적용 (중요: 이 시점에서는 아직 Start하지 않음)
                 if (_isSlotTrackingActive)
                 {
                     ApplyP3CoordinatesForCurrentSlot(menuType);
@@ -4586,6 +4615,50 @@ namespace TeachingPendant.MovementUI
             return Math.Abs(_currentR - _targetR) < tolerance &&
                    Math.Abs(_currentT - _targetT) < tolerance &&
                    Math.Abs(_currentA - _targetA) < tolerance;
+        }
+        #endregion
+
+        #region UI 요소 초기화 확인 메서드 추가
+        /// <summary>
+        /// UI 요소들이 제대로 로드되었는지 확인
+        /// </summary>
+        private void ValidateUIElements()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("=== UI 요소 검증 시작 ===");
+
+                if (txtCurrentR == null)
+                    System.Diagnostics.Debug.WriteLine("경고: txtCurrentR이 null입니다");
+                else
+                    System.Diagnostics.Debug.WriteLine("txtCurrentR 정상 로드됨");
+
+                if (txtCurrentT == null)
+                    System.Diagnostics.Debug.WriteLine("경고: txtCurrentT가 null입니다");
+                else
+                    System.Diagnostics.Debug.WriteLine("txtCurrentT 정상 로드됨");
+
+                if (txtCurrentA == null)
+                    System.Diagnostics.Debug.WriteLine("경고: txtCurrentA가 null입니다");
+                else
+                    System.Diagnostics.Debug.WriteLine("txtCurrentA 정상 로드됨");
+
+                if (txtCurrentSlot == null)
+                    System.Diagnostics.Debug.WriteLine("경고: txtCurrentSlot이 null입니다");
+                else
+                    System.Diagnostics.Debug.WriteLine("txtCurrentSlot 정상 로드됨");
+
+                if (txtTotalSlots == null)
+                    System.Diagnostics.Debug.WriteLine("경고: txtTotalSlots가 null입니다");
+                else
+                    System.Diagnostics.Debug.WriteLine("txtTotalSlots 정상 로드됨");
+
+                System.Diagnostics.Debug.WriteLine("=== UI 요소 검증 완료 ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ValidateUIElements 오류: {ex.Message}");
+            }
         }
         #endregion
     }
