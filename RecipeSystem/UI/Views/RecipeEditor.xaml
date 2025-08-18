@@ -130,6 +130,8 @@
                                 Click="btnValidate_Click"/>
                         <Button x:Name="btnSave" Content="Save" Width="60" Height="25" Margin="5,0"
                                 Click="btnSave_Click"/>
+                        <Button x:Name="btnCoordEdit" Content="좌표편집" Width="70" Height="25" Margin="5,0"
+            Click="btnCoordEdit_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>

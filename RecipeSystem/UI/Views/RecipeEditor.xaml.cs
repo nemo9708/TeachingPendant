@@ -34,19 +34,20 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         private List<string> _availableTeachingGroups;
         private List<string> _availableTeachingLocations;
         private UserRole _currentUserRole;
+        private bool _isCoordinateEditMode = false;
         #endregion
 
-        #region Public Properties
+        #region Public Properties - 기존 프로퍼티들
         /// <summary>
         /// 현재 편집 중인 레시피
         /// </summary>
         public TransferRecipe CurrentRecipe
         {
-            get => _currentRecipe;
+            get { return _currentRecipe; }
             set
             {
                 _currentRecipe = value;
-                OnPropertyChanged(nameof(CurrentRecipe));
+                OnPropertyChanged("CurrentRecipe");
                 LoadRecipeForEditing();
             }
         }
@@ -56,11 +57,11 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         /// </summary>
         public RecipeStep SelectedStep
         {
-            get => _selectedStep;
+            get { return _selectedStep; }
             set
             {
                 _selectedStep = value;
-                OnPropertyChanged(nameof(SelectedStep));
+                OnPropertyChanged("SelectedStep");
                 UpdateStepDetailsPanel();
             }
         }
@@ -70,12 +71,26 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         /// </summary>
         public bool IsModified
         {
-            get => _isModified;
+            get { return _isModified; }
             set
             {
                 _isModified = value;
-                OnPropertyChanged(nameof(IsModified));
+                OnPropertyChanged("IsModified");
                 UpdateModifiedIndicator();
+            }
+        }
+
+        /// <summary>
+        /// 좌표 편집 모드 여부
+        /// </summary>
+        public bool IsCoordinateEditMode
+        {
+            get { return _isCoordinateEditMode; }
+            set
+            {
+                _isCoordinateEditMode = value;
+                OnPropertyChanged("IsCoordinateEditMode");
+                // TODO: 나중에 UI 업데이트 메서드 추가
             }
         }
         #endregion
@@ -1360,6 +1375,63 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         protected virtual void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        #endregion
+
+        #region Coordinate Editing - Step 1 (기본 구조만)
+        /// <summary>
+        /// 좌표 편집 모드 토글 (현재는 단순 상태 변경만)
+        /// </summary>
+        private void ToggleCoordinateEditMode()
+        {
+            try
+            {
+                IsCoordinateEditMode = !IsCoordinateEditMode;
+
+                Logger.Info(CLASS_NAME, "ToggleCoordinateEditMode",
+                    string.Format("좌표 편집 모드 변경: {0}", IsCoordinateEditMode));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, "ToggleCoordinateEditMode", "모드 변경 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 좌표 편집 버튼 클릭 이벤트 (Step 1 - 기본 동작만)
+        /// </summary>
+        private void btnCoordEdit_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (SelectedStep == null)
+                {
+                    MessageBox.Show("편집할 스텝을 먼저 선택하세요.", "알림",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                ToggleCoordinateEditMode();
+
+                // 현재 상태를 버튼 텍스트로 표시
+                var button = sender as Button;
+                if (button != null)
+                {
+                    button.Content = IsCoordinateEditMode ? "편집종료" : "좌표편집";
+                    button.Background = IsCoordinateEditMode ?
+                        new SolidColorBrush(Colors.LightPink) :
+                        new SolidColorBrush(Colors.LightBlue);
+                }
+
+                Logger.Info(CLASS_NAME, "btnCoordEdit_Click",
+                    string.Format("좌표 편집 버튼 클릭됨. 모드: {0}", IsCoordinateEditMode));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, "btnCoordEdit_Click", "버튼 클릭 처리 실패", ex);
+                MessageBox.Show("오류가 발생했습니다: " + ex.Message, "오류",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         #endregion
     }
