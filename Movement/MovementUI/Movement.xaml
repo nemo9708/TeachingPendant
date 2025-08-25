@@ -62,6 +62,66 @@
                 <TextBlock x:Name="txtCurrentA" Text="0.00" Width="50" VerticalAlignment="Center" 
                    Margin="0,0,8,0" FontFamily="Consolas" Foreground="Blue" FontWeight="Bold"/>
 
+                <!-- 좌표 표시 영역 근처에 배치하는 것이 좋습니다 -->
+
+                <GroupBox Header="좌표 미세 조정 (데드맨 스위치)" FontWeight="Bold" Margin="5" Background="LightCyan">
+                    <Grid Margin="5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- 안내 메시지 -->
+                        <TextBlock Grid.Row="0"
+                   Text="1️⃣ 조정할 좌표를 클릭하여 선택"
+                   FontSize="12"
+                   FontWeight="SemiBold"
+                   Foreground="DarkBlue"
+                   Margin="0,0,0,5"/>
+
+                        <TextBlock Grid.Row="1"
+                   Text="2️⃣ 조정 버튼을 누르고 있으면 1씩 증가"
+                   FontSize="12"
+                   FontWeight="SemiBold"
+                   Foreground="DarkBlue"
+                   Margin="0,0,0,10"/>
+
+                        <!-- 좌표 조정 버튼 (데드맨 스위치) -->
+                        <Button x:Name="btnCoordinateAdjust" 
+                Grid.Row="2"
+                Content="좌표 조정" 
+                Width="140" 
+                Height="60" 
+                Margin="5"
+                Background="LightSteelBlue"
+                BorderBrush="SteelBlue"
+                BorderThickness="3"
+                FontWeight="Bold"
+                FontSize="16"
+                ToolTip="1. 먼저 조정할 좌표(P1A, P1T 등)를 클릭하세요&#x0a;2. 이 버튼을 누르고 있으면 좌표가 1씩 증가합니다&#x0a;3. 버튼을 놓으면 즉시 중단됩니다 (데드맨 스위치)"
+                PreviewMouseLeftButtonDown="CoordinateAdjustButton_PreviewMouseLeftButtonDown"
+                PreviewMouseLeftButtonUp="CoordinateAdjustButton_PreviewMouseLeftButtonUp"
+                MouseLeave="CoordinateAdjustButton_MouseLeave"/>
+
+                        <!-- 안전 안내 텍스트 -->
+                        <StackPanel Grid.Row="3" Orientation="Vertical" Margin="5">
+                            <TextBlock Text="⚠️ 데드맨 스위치: 버튼을 놓으면 즉시 중단"
+                       FontSize="10"
+                       Foreground="OrangeRed"
+                       TextAlignment="Center"
+                       FontStyle="Italic"/>
+
+                            <TextBlock Text="🛡️ 소프트 리미트 도달시 자동 중단"
+                       FontSize="10"
+                       Foreground="Green"
+                       TextAlignment="Center"
+                       FontStyle="Italic"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+
                 <!-- 슬롯 추적 UI 추가 -->
                 <TextBlock Text="Slot:" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
                 <TextBlock x:Name="txtCurrentSlot" Text="1" VerticalAlignment="Center" 

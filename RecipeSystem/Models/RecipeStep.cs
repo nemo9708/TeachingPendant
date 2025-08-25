@@ -1,8 +1,4 @@
-﻿// =============================================================================
-// RecipeSystem/Models/RecipeStep.cs  
-// 레시피의 개별 실행 스텝을 정의하는 클래스
-// =============================================================================
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using Newtonsoft.Json;

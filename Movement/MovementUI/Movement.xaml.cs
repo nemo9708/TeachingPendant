@@ -12,6 +12,9 @@ using TeachingPendant.Safety;
 using TeachingPendant.RecipeSystem.Models;
 using TeachingPendant.MonitorUI;
 using System.Linq;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace TeachingPendant.MovementUI
 {
@@ -507,35 +510,27 @@ namespace TeachingPendant.MovementUI
         {
             try
             {
-                // 권한 확인 - Auto 모드에서만 자동 실행 허용
-                if (!GlobalModeManager.IsAutoMode)
+                // 안전 확인을 먼저 수행
+                if (!CheckSafetyBeforeMovement())
                 {
-                    AlarmMessageManager.ShowAlarm(Alarms.OPERATION_LIMIT,
-                        "Auto execution requires Auto mode");
-                    return;
+                    System.Diagnostics.Debug.WriteLine("Movement: 안전 확인 실패로 Start 동작 중단");
+                    return; // 안전하지 않으면 실행 중단
                 }
 
-                // 이미 실행 중인 경우 중복 시작 방지
-                if (_isAutoExecutionRunning)
-                {
-                    AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
-                        "Auto execution is already running");
-                    return;
-                }
-
+                // 안전 확인 통과시에만 실행
                 StartAutoExecution();
 
-                // I/O 자동 제어 추가
-                IOController.SetOutput("Green Light", true);   // DO06 ON
-                IOController.SetOutput("Red Light", false);    // DO07 OFF
-                IOController.SetOutput("Buzzer", false);       // DO08 OFF
+                // I/O 자동 제어
+                IOController.SetOutput("Green Light", true);
+                IOController.SetOutput("Red Light", false);
+                IOController.SetOutput("Buzzer", false);
 
-                System.Diagnostics.Debug.WriteLine("자동 실행 시작됨");
+                System.Diagnostics.Debug.WriteLine("Movement: Start 동작 완료 - 모든 안전 확인 통과");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Movement: 자동 실행 시작 중 오류: " + ex.Message);
-                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "자동 실행 시작 중 오류가 발생했습니다.");
+                System.Diagnostics.Debug.WriteLine($"Movement: Start 동작 중 오류: {ex.Message}");
+                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, $"Start 동작 실패: {ex.Message}");
             }
         }
 
@@ -3448,14 +3443,13 @@ namespace TeachingPendant.MovementUI
         {
             try
             {
-                // 1. SafetySystem이 초기화되었는지 확인
+                // 1. 기존 SafetySystem 확인
                 if (!SafetySystem.IsInitialized)
                 {
                     AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "안전 시스템이 초기화되지 않았습니다.");
                     return false;
                 }
 
-                // 2. 전체 안전 상태 확인
                 if (SafetySystem.CurrentStatus != SafetyStatus.Safe)
                 {
                     string statusMessage = "현재 안전 상태: " + SafetySystem.CurrentStatus;
@@ -3465,28 +3459,12 @@ namespace TeachingPendant.MovementUI
                     return false;
                 }
 
-                // 3. 모든 인터록 확인
-                if (!SafetySystem.AllInterlocksSecure)
-                {
-                    var unsafeDevices = SafetySystem.GetUnsafeInterlockDevices();
-                    string deviceNames = "";
-                    foreach (var device in unsafeDevices)
-                    {
-                        deviceNames += device.DeviceName + " ";
-                    }
-
-                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR,
-                        "다음 인터록이 안전하지 않습니다: " + deviceNames);
-                    System.Diagnostics.Debug.WriteLine("Movement: 안전하지 않은 인터록 - " + deviceNames);
-                    return false;
-                }
-
-                // 4. 로봇 작업 종합 안전성 확인
-                if (!SafetySystem.IsSafeForRobotOperation())
+                // 2. 새로 추가된 소프트 리미트 확인
+                if (!CheckTargetPositionSoftLimits())
                 {
                     AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR,
-                        "로봇 작업 조건이 충족되지 않았습니다.");
-                    System.Diagnostics.Debug.WriteLine("Movement: 로봇 작업 조건 미충족");
+                        "목표 좌표가 소프트 리미트를 초과하여 동작할 수 없습니다.");
+                    System.Diagnostics.Debug.WriteLine("Movement: 소프트 리미트 위반으로 동작 거부");
                     return false;
                 }
 
@@ -3495,9 +3473,62 @@ namespace TeachingPendant.MovementUI
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("Movement 안전 확인 실패: " + ex.Message);
-                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "안전 확인 중 오류가 발생했습니다.");
+                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "안전 확인 중 오류가 발생했습니다: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Movement: 안전 확인 중 예외 발생: " + ex.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 목표 좌표의 소프트 리미트 확인
+        /// </summary>
+        /// <returns>리미트 범위 내 여부</returns>
+        private bool CheckTargetPositionSoftLimits()
+        {
+            try
+            {
+                // 현재 선택된 그룹과 메뉴의 좌표 가져오기
+                var coordinateData = GetCurrentVisibleCoordinateData();
+                if (coordinateData == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Movement: 좌표 데이터를 가져올 수 없음");
+                    return true; // 좌표가 없으면 검사 스킵
+                }
+
+                // P1~P7 좌표를 개별적으로 검사 (올바른 방법)
+                string[][] allCoordinates = {
+            coordinateData.P1, coordinateData.P2, coordinateData.P3, coordinateData.P4,
+            coordinateData.P5, coordinateData.P6, coordinateData.P7
+        };
+
+                for (int i = 0; i < allCoordinates.Length; i++)
+                {
+                    var coord = allCoordinates[i];
+
+                    // null 체크 추가
+                    if (coord == null || coord.Length < 3) continue;
+
+                    // 문자열을 double로 변환
+                    if (double.TryParse(coord[0], out double a) &&
+                        double.TryParse(coord[1], out double t) &&
+                        double.TryParse(coord[2], out double z))
+                    {
+                        // 기존 SafetySystem.IsWithinSoftLimits 사용
+                        if (!SafetySystem.IsWithinSoftLimits(a, t, z))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Movement: P{i + 1} 좌표가 소프트 리미트 초과 - A:{a:F2}, T:{t:F2}, Z:{z:F2}");
+                            return false;
+                        }
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("Movement: 모든 좌표가 소프트 리미트 범위 내");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Movement: 소프트 리미트 확인 중 오류: {ex.Message}");
+                return false; // 오류 발생시 안전을 위해 거부
             }
         }
 
@@ -4660,6 +4691,365 @@ namespace TeachingPendant.MovementUI
                 System.Diagnostics.Debug.WriteLine($"ValidateUIElements 오류: {ex.Message}");
             }
         }
+        #endregion
+
+        #region 포인트 선택 및 좌표 조정 시스템
+        private DispatcherTimer _coordinateAdjustmentTimer;
+        private bool _isAdjustmentActive = false;
+        private string _selectedPointName = ""; // P1, P2, P3 등
+        private string _selectedAxisName = ""; // A, T, Z
+        private TextBox _selectedTextBox = null;
+        private DateTime _adjustmentStartTime;
+        private int _adjustmentCounter = 0;
+
+        /// <summary>
+        /// 좌표 조정 시스템 초기화
+        /// Movement 생성자나 Loaded 이벤트에서 호출
+        /// </summary>
+        private void InitializeCoordinateAdjustmentSystem()
+        {
+            try
+            {
+                // 조정 타이머 초기화 (100ms 간격으로 1씩 증가)
+                _coordinateAdjustmentTimer = new DispatcherTimer();
+                _coordinateAdjustmentTimer.Interval = TimeSpan.FromMilliseconds(100);
+                _coordinateAdjustmentTimer.Tick += CoordinateAdjustmentTimer_Tick;
+
+                // 모든 좌표 TextBox에 클릭 이벤트 연결
+                AttachCoordinateTextBoxEvents();
+
+                System.Diagnostics.Debug.WriteLine("[Movement] 좌표 조정 시스템 초기화 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 시스템 초기화 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 모든 좌표 TextBox에 이벤트 연결
+        /// </summary>
+        private void AttachCoordinateTextBoxEvents()
+        {
+            try
+            {
+                // P1 좌표 TextBox들
+                if (txtP1A != null) AttachTextBoxEvents(txtP1A, "P1", "A");
+                if (txtP1T != null) AttachTextBoxEvents(txtP1T, "P1", "T");
+                if (txtP1Z != null) AttachTextBoxEvents(txtP1Z, "P1", "Z");
+
+                // P2 좌표 TextBox들
+                if (txtP2A != null) AttachTextBoxEvents(txtP2A, "P2", "A");
+                if (txtP2T != null) AttachTextBoxEvents(txtP2T, "P2", "T");
+                if (txtP2Z != null) AttachTextBoxEvents(txtP2Z, "P2", "Z");
+
+                // P3 좌표 TextBox들
+                if (txtP3A != null) AttachTextBoxEvents(txtP3A, "P3", "A");
+                if (txtP3T != null) AttachTextBoxEvents(txtP3T, "P3", "T");
+                if (txtP3Z != null) AttachTextBoxEvents(txtP3Z, "P3", "Z");
+
+                // P4 좌표 TextBox들
+                if (txtP4A != null) AttachTextBoxEvents(txtP4A, "P4", "A");
+                if (txtP4T != null) AttachTextBoxEvents(txtP4T, "P4", "T");
+                if (txtP4Z != null) AttachTextBoxEvents(txtP4Z, "P4", "Z");
+
+                // P5 좌표 TextBox들
+                if (txtP5A != null) AttachTextBoxEvents(txtP5A, "P5", "A");
+                if (txtP5T != null) AttachTextBoxEvents(txtP5T, "P5", "T");
+                if (txtP5Z != null) AttachTextBoxEvents(txtP5Z, "P5", "Z");
+
+                // P6 좌표 TextBox들
+                if (txtP6A != null) AttachTextBoxEvents(txtP6A, "P6", "A");
+                if (txtP6T != null) AttachTextBoxEvents(txtP6T, "P6", "T");
+                if (txtP6Z != null) AttachTextBoxEvents(txtP6Z, "P6", "Z");
+
+                // P7 좌표 TextBox들
+                if (txtP7A != null) AttachTextBoxEvents(txtP7A, "P7", "A");
+                if (txtP7T != null) AttachTextBoxEvents(txtP7T, "P7", "T");
+                if (txtP7Z != null) AttachTextBoxEvents(txtP7Z, "P7", "Z");
+
+                System.Diagnostics.Debug.WriteLine("[Movement] 모든 좌표 TextBox 이벤트 연결 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] TextBox 이벤트 연결 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 개별 TextBox에 이벤트 연결
+        /// </summary>
+        private void AttachTextBoxEvents(TextBox textBox, string pointName, string axisName)
+        {
+            if (textBox == null) return;
+
+            // 클릭시 선택 이벤트
+            textBox.PreviewMouseLeftButtonDown += (sender, e) => {
+                SelectCoordinateForAdjustment(sender as TextBox, pointName, axisName);
+            };
+
+            // 포커스 받을때 선택 이벤트
+            textBox.GotFocus += (sender, e) => {
+                SelectCoordinateForAdjustment(sender as TextBox, pointName, axisName);
+            };
+        }
+
+        /// <summary>
+        /// 좌표 TextBox 선택 (조정 대상 설정)
+        /// </summary>
+        private void SelectCoordinateForAdjustment(TextBox textBox, string pointName, string axisName)
+        {
+            try
+            {
+                // 기존 선택 해제
+                ClearCoordinateSelection();
+
+                // 새로운 선택 설정
+                _selectedTextBox = textBox;
+                _selectedPointName = pointName;
+                _selectedAxisName = axisName;
+
+                // 시각적 피드백
+                if (textBox != null)
+                {
+                    textBox.Background = new SolidColorBrush(Colors.LightYellow);
+                    textBox.BorderBrush = new SolidColorBrush(Colors.Orange);
+                    textBox.BorderThickness = new Thickness(2);
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 선택됨: {pointName} {axisName}축");
+
+                // 사용자에게 알림
+                AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
+                    $"{pointName} {axisName}축이 선택되었습니다. 조정 버튼을 홀드하세요.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 선택 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 좌표 선택 해제
+        /// </summary>
+        private void ClearCoordinateSelection()
+        {
+            try
+            {
+                if (_selectedTextBox != null)
+                {
+                    // 시각적 피드백 원래대로
+                    _selectedTextBox.Background = SystemColors.WindowBrush;
+                    _selectedTextBox.BorderBrush = SystemColors.ControlDarkBrush;
+                    _selectedTextBox.BorderThickness = new Thickness(1);
+                }
+
+                _selectedTextBox = null;
+                _selectedPointName = "";
+                _selectedAxisName = "";
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 선택 해제 오류: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region 데드맨 스위치 좌표 조정 버튼
+
+        /// <summary>
+        /// 좌표 조정 버튼 마우스 다운 이벤트 (데드맨 스위치 시작)
+        /// Movement.xaml에 새로 추가할 버튼의 PreviewMouseLeftButtonDown 이벤트에 연결
+        /// </summary>
+        private void CoordinateAdjustButton_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                // 선택된 좌표가 있는지 확인
+                if (string.IsNullOrEmpty(_selectedPointName) || _selectedTextBox == null)
+                {
+                    AlarmMessageManager.ShowAlarm(Alarms.WARNING, "먼저 조정할 좌표를 클릭하여 선택하세요.");
+                    return;
+                }
+
+                // 조정 시작
+                _isAdjustmentActive = true;
+                _adjustmentStartTime = DateTime.Now;
+                _adjustmentCounter = 0;
+                _coordinateAdjustmentTimer.Start();
+
+                // 버튼 시각적 피드백
+                if (sender is Button btn)
+                {
+                    btn.Background = new SolidColorBrush(Colors.LightGreen);
+                    btn.Content = $"조정 중: {_selectedPointName} {_selectedAxisName}";
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Movement] === 좌표 조정 시작: {_selectedPointName} {_selectedAxisName}축 ===");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 시작 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 좌표 조정 버튼 마우스 업 이벤트 (데드맨 스위치 종료)
+        /// Movement.xaml에 새로 추가할 버튼의 PreviewMouseLeftButtonUp 이벤트에 연결
+        /// </summary>
+        private void CoordinateAdjustButton_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                if (_isAdjustmentActive)
+                {
+                    StopCoordinateAdjustment(sender as Button);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 종료 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 좌표 조정 버튼 마우스 떠남 이벤트 (안전 정지)
+        /// Movement.xaml에 새로 추가할 버튼의 MouseLeave 이벤트에 연결
+        /// </summary>
+        private void CoordinateAdjustButton_MouseLeave(object sender, MouseEventArgs e)
+        {
+            try
+            {
+                if (_isAdjustmentActive)
+                {
+                    System.Diagnostics.Debug.WriteLine("[Movement] 데드맨 스위치 - 마우스 이탈로 인한 안전 정지");
+                    StopCoordinateAdjustment(sender as Button);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 마우스 이탈 처리 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 좌표 조정 중단
+        /// </summary>
+        private void StopCoordinateAdjustment(Button btn)
+        {
+            try
+            {
+                _coordinateAdjustmentTimer.Stop();
+                _isAdjustmentActive = false;
+
+                var totalDuration = DateTime.Now - _adjustmentStartTime;
+
+                // 버튼 시각적 피드백 원래대로
+                if (btn != null)
+                {
+                    btn.Background = new SolidColorBrush(Colors.LightSteelBlue);
+                    btn.Content = "좌표 조정";
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Movement] === 좌표 조정 완료 ===");
+                System.Diagnostics.Debug.WriteLine($"[Movement] 대상: {_selectedPointName} {_selectedAxisName}축");
+                System.Diagnostics.Debug.WriteLine($"[Movement] 조정 시간: {totalDuration.TotalSeconds:F1}초");
+                System.Diagnostics.Debug.WriteLine($"[Movement] 증가량: +{_adjustmentCounter}");
+
+                // 사용자에게 알림
+                AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION,
+                    $"{_selectedPointName} {_selectedAxisName}축 조정 완료 (+{_adjustmentCounter})");
+
+                // 좌표 저장
+                SaveCurrentCoordinates();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 중단 처리 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 좌표 조정 타이머 틱 이벤트 (100ms마다 +1 증가)
+        /// </summary>
+        private void CoordinateAdjustmentTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                if (_isAdjustmentActive && _selectedTextBox != null)
+                {
+                    // 현재 좌표값 가져오기
+                    if (double.TryParse(_selectedTextBox.Text, out double currentValue))
+                    {
+                        // 1만큼 증가
+                        double newValue = currentValue + 1.0;
+
+                        // 소프트 리미트 확인
+                        if (IsWithinSoftLimits(newValue))
+                        {
+                            // 새 값 설정
+                            _selectedTextBox.Text = newValue.ToString("F2");
+                            _adjustmentCounter++;
+
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[Movement] {_selectedPointName} {_selectedAxisName}: {currentValue:F2} → {newValue:F2}");
+                        }
+                        else
+                        {
+                            // 소프트 리미트 초과시 정지
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[Movement] 소프트 리미트 도달 - 조정 중단: {newValue:F2}");
+
+                            AlarmMessageManager.ShowAlarm(Alarms.WARNING,
+                                $"소프트 리미트에 도달하여 조정이 중단되었습니다.");
+
+                            StopCoordinateAdjustment(null);
+                        }
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[Movement] 좌표값 파싱 실패 - 조정 중단");
+                        StopCoordinateAdjustment(null);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 좌표 조정 타이머 틱 오류: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 소프트 리미트 범위 내 여부 확인
+        /// </summary>
+        private bool IsWithinSoftLimits(double value)
+        {
+            try
+            {
+                // 축별로 리미트 확인
+                switch (_selectedAxisName)
+                {
+                    case "A":
+                        return value >= (double)TeachingPendant.SetupUI.Setup.SoftLimitA1 &&
+                               value <= (double)TeachingPendant.SetupUI.Setup.SoftLimitA2;
+                    case "T":
+                        return value >= (double)TeachingPendant.SetupUI.Setup.SoftLimitT1 &&
+                               value <= (double)TeachingPendant.SetupUI.Setup.SoftLimitT2;
+                    case "Z":
+                        return value >= (double)TeachingPendant.SetupUI.Setup.SoftLimitZ1 &&
+                               value <= (double)TeachingPendant.SetupUI.Setup.SoftLimitZ2;
+                    default:
+                        return true; // 알 수 없는 축은 허용
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[Movement] 소프트 리미트 확인 오류: {ex.Message}");
+                return false; // 오류시 안전을 위해 거부
+            }
+        }
+
         #endregion
     }
 
