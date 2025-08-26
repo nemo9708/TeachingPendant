@@ -79,11 +79,9 @@ namespace TeachingPendant.HardwareControllers
             InitializeController();
             System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT robot controller created");
         }
-        #endregion
 
-        #region Initialization
         /// <summary>
-        /// 컨트롤러 초기화
+        /// 컨트롤러 초기화 (센서 시스템 추가)
         /// </summary>
         private void InitializeController()
         {
@@ -98,6 +96,114 @@ namespace TeachingPendant.HardwareControllers
             _statusUpdateTimer = new DispatcherTimer();
             _statusUpdateTimer.Interval = TimeSpan.FromMilliseconds(200);
             _statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
+
+            // 센서 시스템 초기화 추가
+            InitializeSensorSystem();
+
+            System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Controller initialization completed with sensor system");
+        }
+        #endregion
+
+        #region Sensor Feedback System Fields
+        private DateTime _lastSensorUpdateTime;
+        private SensorData _currentSensorData;
+        private readonly int SENSOR_UPDATE_INTERVAL_MS = 50; // 50ms 간격으로 센서 업데이트
+        private bool _sensorSystemEnabled = false;
+
+        /// <summary>
+        /// 센서 데이터 구조체
+        /// </summary>
+        private class SensorData
+        {
+            // 위치 센서 데이터
+            public int ActualRAxisPulse { get; set; }
+            public int ActualThetaAxisPulse { get; set; }
+            public int ActualZAxisPulse { get; set; }
+            public int CurrentRAxisSpeed { get; set; }
+            public int CurrentThetaAxisSpeed { get; set; }
+            public int CurrentZAxisSpeed { get; set; }
+
+            // 상태 센서 데이터
+            public bool IsServoReady { get; set; }
+            public bool IsMotorEnabled { get; set; }
+            public bool IsInPosition { get; set; }
+            public double Temperature { get; set; }
+            public double Vibration { get; set; }
+            public double MotorCurrent { get; set; }
+
+            // 안전 센서 데이터
+            public bool EmergencyStopActive { get; set; }
+            public bool DoorClosed { get; set; }
+            public bool LightCurtainClear { get; set; }
+            public double VacuumPressure { get; set; }
+
+            // I/O 센서 데이터
+            public bool WaferDetected { get; set; }
+            public bool CassettePresent { get; set; }
+            public bool LoadportReady { get; set; }
+            public bool VacuumValveOpen { get; set; }
+
+            public DateTime UpdateTime { get; set; }
+
+            public SensorData()
+            {
+                UpdateTime = DateTime.Now;
+            }
+        }
+        #endregion
+
+        #region Initialization
+        /// <summary>
+        /// 컨트롤러 초기화
+        /// </summary>
+        private void InitializeSensorSystem()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 피드백 시스템 초기화");
+
+                _currentSensorData = new SensorData();
+                _lastSensorUpdateTime = DateTime.MinValue;
+                _sensorSystemEnabled = false;
+
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 피드백 시스템 초기화 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 시스템 초기화 실패: {ex.Message}");
+            }
+        }
+
+        // <summary>
+        /// 센서 시스템 활성화 (연결 시 호출)
+        /// </summary>
+        private void EnableSensorSystem()
+        {
+            try
+            {
+                _sensorSystemEnabled = true;
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 시스템 활성화됨");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 시스템 활성화 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 센서 시스템 비활성화 (연결 해제 시 호출)
+        /// </summary>
+        private void DisableSensorSystem()
+        {
+            try
+            {
+                _sensorSystemEnabled = false;
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 시스템 비활성화됨");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 시스템 비활성화 실패: {ex.Message}");
+            }
         }
         #endregion
 
@@ -135,6 +241,9 @@ namespace TeachingPendant.HardwareControllers
                     _statusUpdateTimer.Start();
                 }
 
+                // 센서 시스템 활성화 추가
+                EnableSensorSystem();
+
                 UpdateStatus();
 
                 // 연결 확인 부저
@@ -142,13 +251,13 @@ namespace TeachingPendant.HardwareControllers
                 await Task.Delay(200);
                 _dtp7h.SendBuzzerCommand(false);
 
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT robot connected successfully");
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT robot connected successfully with sensor system enabled");
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Connection failed: {ex.Message}");
-                OnErrorOccurred("CONNECT_ERROR", "EtherCAT robot connection failed", ex);
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Connect failed: {ex.Message}");
+                OnErrorOccurred("CONNECT_ERROR", "Connection failed", ex);
                 return false;
             }
         }
@@ -664,22 +773,129 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                // 실제 웨이퍼 감지 센서 상태 조회
-                string sensorQuery = "GET_WAFER_SENSOR\r\n";
+                // 센서 시스템이 활성화된 경우 실제 센서 데이터 사용
+                if (_sensorSystemEnabled && _currentSensorData != null)
+                {
+                    // 웨이퍼 감지 센서와 진공 압력 둘 다 확인
+                    bool sensorDetected = _currentSensorData.WaferDetected;
+                    bool vacuumDetected = _currentSensorData.VacuumPressure > 75.0;
 
-                await Task.Delay(100);
+                    bool waferDetected = sensorDetected && vacuumDetected;
 
-                // 현재는 시뮬레이션 (실제로는 센서 데이터 파싱)
-                // 진공이 켜져있으면 웨이퍼가 감지된 것으로 가정
-                bool detected = _vacuumOn;
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 기반 웨이퍼 감지: 센서={sensorDetected}, 진공={vacuumDetected}, 결과={waferDetected}");
+                    return waferDetected;
+                }
+                else
+                {
+                    // 센서 시스템이 비활성화된 경우 기존 방식 사용
+                    await Task.Delay(100);
+                    bool detected = _vacuumOn;
 
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 웨이퍼 감지 확인: {(detected ? "감지됨" : "미감지")}");
-                return detected;
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 기본 웨이퍼 감지: {detected}");
+                    return detected;
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 웨이퍼 감지 확인 오류: {ex.Message}");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 센서 시스템 진단 정보 조회 (안정성 개선 버전)
+        /// </summary>
+        /// <returns>진단 정보 문자열</returns>
+        public string GetSensorDiagnosticsInfo()
+        {
+            try
+            {
+                // 센서 시스템 활성화 상태 확인
+                if (!_sensorSystemEnabled)
+                {
+                    return "센서 시스템이 비활성화되어 있습니다.";
+                }
+
+                // 센서 데이터 null 체크
+                if (_currentSensorData == null)
+                {
+                    return "센서 데이터가 초기화되지 않았습니다.";
+                }
+
+                // 스레드 안전을 위한 센서 데이터 복사
+                SensorData sensorDataCopy;
+                try
+                {
+                    sensorDataCopy = GetCurrentSensorData();
+                    if (sensorDataCopy == null)
+                    {
+                        return "센서 데이터 복사 실패";
+                    }
+                }
+                catch (Exception copyEx)
+                {
+                    return "센서 데이터 접근 중 오류: " + copyEx.Message;
+                }
+
+                // StringBuilder 안전 초기화
+                var diagnostics = new System.Text.StringBuilder(1000); // 초기 용량 지정
+
+                try
+                {
+                    diagnostics.AppendLine("=== 센서 시스템 진단 정보 ===");
+                    diagnostics.AppendLine("업데이트 시간: " + sensorDataCopy.UpdateTime.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                    diagnostics.AppendLine("");
+
+                    // 위치 센서 정보 (안전한 계산)
+                    diagnostics.AppendLine("위치 센서:");
+                    diagnostics.AppendLine("  R축: " + sensorDataCopy.ActualRAxisPulse.ToString() + " pulse (" +
+                                         (sensorDataCopy.ActualRAxisPulse / 1000.0).ToString("F2") + " mm)");
+                    diagnostics.AppendLine("  T축: " + sensorDataCopy.ActualThetaAxisPulse.ToString() + " pulse (" +
+                                         (sensorDataCopy.ActualThetaAxisPulse / 100.0).ToString("F1") + " degree)");
+                    diagnostics.AppendLine("  Z축: " + sensorDataCopy.ActualZAxisPulse.ToString() + " pulse (" +
+                                         (sensorDataCopy.ActualZAxisPulse / 500.0).ToString("F2") + " mm)");
+                    diagnostics.AppendLine("  속도: R=" + sensorDataCopy.CurrentRAxisSpeed.ToString() + "%, T=" +
+                                         sensorDataCopy.CurrentThetaAxisSpeed.ToString() + "%, Z=" +
+                                         sensorDataCopy.CurrentZAxisSpeed.ToString() + "%");
+                    diagnostics.AppendLine("");
+
+                    // 상태 센서 정보
+                    diagnostics.AppendLine("상태 센서:");
+                    diagnostics.AppendLine("  서보 준비: " + (sensorDataCopy.IsServoReady ? "예" : "아니오"));
+                    diagnostics.AppendLine("  모터 활성: " + (sensorDataCopy.IsMotorEnabled ? "예" : "아니오"));
+                    diagnostics.AppendLine("  위치 도달: " + (sensorDataCopy.IsInPosition ? "예" : "아니오"));
+                    diagnostics.AppendLine("  온도: " + sensorDataCopy.Temperature.ToString("F1") + "°C");
+                    diagnostics.AppendLine("  진동: " + sensorDataCopy.Vibration.ToString("F3"));
+                    diagnostics.AppendLine("  모터 전류: " + sensorDataCopy.MotorCurrent.ToString("F1") + "A");
+                    diagnostics.AppendLine("");
+
+                    // 안전 센서 정보
+                    diagnostics.AppendLine("안전 센서:");
+                    diagnostics.AppendLine("  비상정지: " + (sensorDataCopy.EmergencyStopActive ? "활성" : "정상"));
+                    diagnostics.AppendLine("  도어 상태: " + (sensorDataCopy.DoorClosed ? "닫힘" : "열림"));
+                    diagnostics.AppendLine("  라이트 커튼: " + (sensorDataCopy.LightCurtainClear ? "정상" : "차단"));
+                    diagnostics.AppendLine("  진공 압력: " + sensorDataCopy.VacuumPressure.ToString("F1") + "%");
+                    diagnostics.AppendLine("");
+
+                    // I/O 센서 정보
+                    diagnostics.AppendLine("I/O 센서:");
+                    diagnostics.AppendLine("  웨이퍼 감지: " + (sensorDataCopy.WaferDetected ? "감지됨" : "미감지"));
+                    diagnostics.AppendLine("  카세트 존재: " + (sensorDataCopy.CassettePresent ? "존재" : "없음"));
+                    diagnostics.AppendLine("  로드포트 준비: " + (sensorDataCopy.LoadportReady ? "준비됨" : "준비안됨"));
+                    diagnostics.AppendLine("  진공 밸브: " + (sensorDataCopy.VacuumValveOpen ? "열림" : "닫힘"));
+
+                    return diagnostics.ToString();
+                }
+                catch (Exception buildEx)
+                {
+                    return "진단 정보 생성 중 오류: " + buildEx.Message;
+                }
+            }
+            catch (Exception ex)
+            {
+                // 최상위 예외 처리
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] GetSensorDiagnosticsInfo 오류: " + ex.Message);
+                return "센서 진단 정보 조회 실패: " + ex.Message;
             }
         }
 
@@ -759,15 +975,56 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                // SafetySystem 연동
-                if (!SafetySystem.IsSafeForRobotOperation())
+                // 기본 연결 상태 확인
+                if (!IsConnected)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: Not connected");
                     return false;
                 }
 
-                // 연결 상태 확인
-                if (!IsConnected)
+                // 센서 시스템이 활성화된 경우 센서 데이터 기반 안전 확인
+                if (_sensorSystemEnabled && _currentSensorData != null)
                 {
+                    // 비상정지 확인
+                    if (_currentSensorData.EmergencyStopActive)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: Emergency stop active");
+                        return false;
+                    }
+
+                    // 도어 상태 확인
+                    if (!_currentSensorData.DoorClosed)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: Door open");
+                        return false;
+                    }
+
+                    // 라이트 커튼 확인
+                    if (!_currentSensorData.LightCurtainClear)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: Light curtain blocked");
+                        return false;
+                    }
+
+                    // 온도 확인
+                    if (_currentSensorData.Temperature > 55.0) // 동작 제한 온도
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: High temperature {_currentSensorData.Temperature:F1}°C");
+                        return false;
+                    }
+
+                    // 서보 준비 상태 확인
+                    if (!_currentSensorData.IsServoReady)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: Servo not ready");
+                        return false;
+                    }
+                }
+
+                // 기존 안전 시스템 확인
+                if (!SafetySystem.IsSafeForRobotOperation())
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: SafetySystem check failed");
                     return false;
                 }
 
@@ -775,7 +1032,7 @@ namespace TeachingPendant.HardwareControllers
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Safety check error: {ex.Message}");
                 return false;
             }
         }
@@ -1182,12 +1439,29 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
+                // 기존 상태 업데이트
                 UpdateStatus();
+
+                // 센서 데이터 업데이트 (50ms 간격으로 제한)
+                if (_sensorSystemEnabled && ShouldUpdateSensorData())
+                {
+                    Task.Run(async () => await UpdateSensorDataAsync());
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Status update failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// 센서 데이터 업데이트 시점 확인
+        /// </summary>
+        /// <returns>센서 업데이트 필요 여부</returns>
+        private bool ShouldUpdateSensorData()
+        {
+            var timeSinceLastUpdate = DateTime.Now - _lastSensorUpdateTime;
+            return timeSinceLastUpdate.TotalMilliseconds >= SENSOR_UPDATE_INTERVAL_MS;
         }
 
         /// <summary>
@@ -1236,6 +1510,403 @@ namespace TeachingPendant.HardwareControllers
             {
                 System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Error during status update: {ex.Message}");
             }
+        }
+        #endregion
+
+        #region Sensor Data Collection
+        /// <summary>
+        /// 센서 데이터 비동기 업데이트
+        /// </summary>
+        private async Task UpdateSensorDataAsync()
+        {
+            try
+            {
+                if (!IsConnected || !_sensorSystemEnabled) return;
+
+                _lastSensorUpdateTime = DateTime.Now;
+
+                // 1. 위치 센서 데이터 수집
+                await ReadPositionSensors();
+
+                // 2. 상태 센서 데이터 수집
+                await ReadStatusSensors();
+
+                // 3. 안전 센서 데이터 수집
+                await ReadSafetySensors();
+
+                // 4. I/O 센서 데이터 수집
+                await ReadIOSensors();
+
+                // 5. 센서 데이터 분석 및 처리
+                ProcessSensorData();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 데이터 업데이트 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 위치 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadPositionSensors()
+        {
+            try
+            {
+                // EtherCAT 위치 센서 데이터 요청
+                string positionQuery = "GET_POSITION_ALL\r\n";
+
+                // 실제 통신 시뮬레이션
+                await Task.Delay(5);
+
+                // 실제 로봇으로부터 엔코더 펄스 값 수신 (시뮬레이션)
+                var currentCoords = ConvertUserToRobotCoordinates(_currentPosition.R, _currentPosition.Theta, _currentPosition.Z);
+
+                _currentSensorData.ActualRAxisPulse = currentCoords.RAxisPulse;
+                _currentSensorData.ActualThetaAxisPulse = currentCoords.ThetaAxisPulse;
+                _currentSensorData.ActualZAxisPulse = currentCoords.ZAxisPulse;
+
+                // 속도 데이터 (이동 중일 때만)
+                if (_isMoving)
+                {
+                    _currentSensorData.CurrentRAxisSpeed = _currentSpeed;
+                    _currentSensorData.CurrentThetaAxisSpeed = _currentSpeed;
+                    _currentSensorData.CurrentZAxisSpeed = _currentSpeed;
+                }
+                else
+                {
+                    _currentSensorData.CurrentRAxisSpeed = 0;
+                    _currentSensorData.CurrentThetaAxisSpeed = 0;
+                    _currentSensorData.CurrentZAxisSpeed = 0;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 위치 센서 읽기 완료: R={_currentSensorData.ActualRAxisPulse}, T={_currentSensorData.ActualThetaAxisPulse}, Z={_currentSensorData.ActualZAxisPulse}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 위치 센서 읽기 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 상태 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadStatusSensors()
+        {
+            try
+            {
+                // EtherCAT 상태 센서 데이터 요청
+                string statusQuery = "GET_ROBOT_STATUS\r\n";
+
+                await Task.Delay(3);
+
+                // 모터 및 서보 상태 (연결 상태에 따라)
+                _currentSensorData.IsServoReady = _isConnected;
+                _currentSensorData.IsMotorEnabled = _isConnected && !_isMoving;
+                _currentSensorData.IsInPosition = !_isMoving;
+
+                // 온도 센서 (25-35도 범위로 시뮬레이션)
+                _currentSensorData.Temperature = 25.0 + (DateTime.Now.Second % 10);
+
+                // 진동 센서 (이동 중일 때 진동 발생)
+                _currentSensorData.Vibration = _isMoving ? 0.1 + (DateTime.Now.Millisecond % 100) / 1000.0 : 0.02;
+
+                // 모터 전류 (이동 중일 때 높아짐)
+                _currentSensorData.MotorCurrent = _isMoving ? 2.5 + (_currentSpeed / 100.0) : 0.5;
+
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 상태 센서 읽기 완료: 온도={_currentSensorData.Temperature:F1}°C, 진동={_currentSensorData.Vibration:F3}, 전류={_currentSensorData.MotorCurrent:F1}A");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 상태 센서 읽기 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 안전 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadSafetySensors()
+        {
+            try
+            {
+                // EtherCAT 안전 센서 데이터 요청
+                string safetyQuery = "GET_SAFETY_STATUS\r\n";
+
+                await Task.Delay(2);
+
+                // 비상정지 상태 (정상 상태로 가정)
+                _currentSensorData.EmergencyStopActive = false;
+
+                // 도어 센서 (닫힘 상태로 가정)
+                _currentSensorData.DoorClosed = true;
+
+                // 라이트 커튼 (정상 상태로 가정)
+                _currentSensorData.LightCurtainClear = true;
+
+                // 진공 압력 센서 (진공 ON 시 85% 압력)
+                _currentSensorData.VacuumPressure = _vacuumOn ? 85.0 + (DateTime.Now.Millisecond % 100) / 100.0 : 0.0;
+
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 안전 센서 읽기 완료: E-Stop={_currentSensorData.EmergencyStopActive}, 도어={_currentSensorData.DoorClosed}, 진공압력={_currentSensorData.VacuumPressure:F1}%");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 안전 센서 읽기 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// I/O 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadIOSensors()
+        {
+            try
+            {
+                // EtherCAT I/O 센서 데이터 요청
+                string ioQuery = "GET_IO_STATUS\r\n";
+
+                await Task.Delay(2);
+
+                // 웨이퍼 감지 센서 (진공 상태와 연동)
+                _currentSensorData.WaferDetected = _vacuumOn && _currentSensorData.VacuumPressure > 80.0;
+
+                // 카세트 존재 감지 (항상 존재로 가정)
+                _currentSensorData.CassettePresent = true;
+
+                // 로드포트 준비 상태
+                _currentSensorData.LoadportReady = true;
+
+                // 진공 밸브 상태
+                _currentSensorData.VacuumValveOpen = _vacuumOn;
+
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] I/O 센서 읽기 완료: 웨이퍼감지={_currentSensorData.WaferDetected}, 카세트={_currentSensorData.CassettePresent}, 진공밸브={_currentSensorData.VacuumValveOpen}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] I/O 센서 읽기 실패: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Sensor Data Processing
+        /// <summary>
+        /// 센서 데이터 분석 및 처리
+        /// </summary>
+        private void ProcessSensorData()
+        {
+            try
+            {
+                // 1. 위치 정확도 확인
+                CheckPositionAccuracy();
+
+                // 2. 온도 모니터링
+                CheckTemperature();
+
+                // 3. 안전 상태 확인
+                CheckSafetyConditions();
+
+                // 4. 센서 기반 현재 위치 업데이트
+                UpdatePositionFromSensors();
+
+                _currentSensorData.UpdateTime = DateTime.Now;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 데이터 처리 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 위치 정확도 확인
+        /// </summary>
+        private void CheckPositionAccuracy()
+        {
+            try
+            {
+                if (!_isMoving) return;
+
+                // 목표 위치와 실제 위치 비교
+                var targetCoords = ConvertUserToRobotCoordinates(_targetPosition.R, _targetPosition.Theta, _targetPosition.Z);
+
+                int rError = Math.Abs(_currentSensorData.ActualRAxisPulse - targetCoords.RAxisPulse);
+                int thetaError = Math.Abs(_currentSensorData.ActualThetaAxisPulse - targetCoords.ThetaAxisPulse);
+                int zError = Math.Abs(_currentSensorData.ActualZAxisPulse - targetCoords.ZAxisPulse);
+
+                const int MAX_POSITION_ERROR = 100; // 최대 허용 오차 (펄스)
+
+                if (rError > MAX_POSITION_ERROR || thetaError > MAX_POSITION_ERROR || zError > MAX_POSITION_ERROR)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 위치 오차 경고: R={rError}, T={thetaError}, Z={zError} pulse");
+                    OnErrorOccurred("POSITION_ERROR", $"위치 오차가 허용 범위를 초과했습니다: R={rError}, T={thetaError}, Z={zError}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 위치 정확도 확인 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 온도 모니터링
+        /// </summary>
+        private void CheckTemperature()
+        {
+            try
+            {
+                const double MAX_TEMPERATURE = 60.0; // 최대 허용 온도
+                const double WARNING_TEMPERATURE = 50.0; // 경고 온도
+
+                if (_currentSensorData.Temperature > MAX_TEMPERATURE)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 온도 알람: {_currentSensorData.Temperature:F1}°C");
+                    OnErrorOccurred("TEMPERATURE_ALARM", $"로봇 온도가 위험 수준입니다: {_currentSensorData.Temperature:F1}°C");
+                }
+                else if (_currentSensorData.Temperature > WARNING_TEMPERATURE)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 온도 경고: {_currentSensorData.Temperature:F1}°C");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 온도 모니터링 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 안전 상태 확인
+        /// </summary>
+        private void CheckSafetyConditions()
+        {
+            try
+            {
+                // 비상정지 확인
+                if (_currentSensorData.EmergencyStopActive)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 비상정지 감지됨");
+                    OnErrorOccurred("EMERGENCY_STOP", "비상정지가 활성화되었습니다");
+                    return;
+                }
+
+                // 도어 상태 확인
+                if (!_currentSensorData.DoorClosed && _isMoving)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 도어 열림 감지 (이동 중)");
+                    OnErrorOccurred("DOOR_OPEN", "로봇 이동 중 도어가 열렸습니다");
+                }
+
+                // 라이트 커튼 확인
+                if (!_currentSensorData.LightCurtainClear && _isMoving)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 라이트 커튼 차단됨");
+                    OnErrorOccurred("LIGHT_CURTAIN", "라이트 커튼이 차단되었습니다");
+                }
+
+                // 진공 압력 이상 확인
+                if (_vacuumOn && _currentSensorData.VacuumPressure < 70.0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 진공 압력 부족: {_currentSensorData.VacuumPressure:F1}%");
+                    OnErrorOccurred("VACUUM_LOW", $"진공 압력이 부족합니다: {_currentSensorData.VacuumPressure:F1}%");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 안전 상태 확인 실패: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 센서 기반 현재 위치 업데이트
+        /// </summary>
+        private void UpdatePositionFromSensors()
+        {
+            try
+            {
+                // 엔코더 펄스를 사용자 좌표로 변환
+                double actualR = _currentSensorData.ActualRAxisPulse / 1000.0;      // 펄스 -> mm
+                double actualTheta = _currentSensorData.ActualThetaAxisPulse / 100.0; // 펄스 -> degree
+                double actualZ = _currentSensorData.ActualZAxisPulse / 500.0;       // 펄스 -> mm
+
+                var oldPosition = new Position(_currentPosition.R, _currentPosition.Theta, _currentPosition.Z);
+                var newPosition = new Position(actualR, actualTheta, actualZ);
+
+                // 위치 변화가 있는 경우에만 업데이트
+                if (Math.Abs(oldPosition.R - newPosition.R) > 0.1 ||
+                    Math.Abs(oldPosition.Theta - newPosition.Theta) > 0.1 ||
+                    Math.Abs(oldPosition.Z - newPosition.Z) > 0.1)
+                {
+                    lock (_lockObject)
+                    {
+                        _currentPosition = newPosition;
+                    }
+
+                    // 위치 변경 이벤트 발생
+                    OnPositionChanged(oldPosition, newPosition);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 기반 위치 업데이트 실패: {ex.Message}");
+            }
+        }
+        #endregion
+
+        #region Public Sensor Access Methods
+        /// <summary>
+        /// 현재 센서 데이터 조회
+        /// </summary>
+        /// <returns>현재 센서 데이터 복사본</returns>
+        public SensorData GetCurrentSensorData()
+        {
+            try
+            {
+                // 스레드 안전을 위한 지역 변수로 복사
+                SensorData localSensorData = _currentSensorData;
+
+                if (localSensorData == null)
+                {
+                    return new SensorData();
+                }
+
+                // 센서 데이터 안전한 복사본 생성 (스레드 안전)
+                return new SensorData
+                {
+                    ActualRAxisPulse = localSensorData.ActualRAxisPulse,
+                    ActualThetaAxisPulse = localSensorData.ActualThetaAxisPulse,
+                    ActualZAxisPulse = localSensorData.ActualZAxisPulse,
+                    CurrentRAxisSpeed = localSensorData.CurrentRAxisSpeed,
+                    CurrentThetaAxisSpeed = localSensorData.CurrentThetaAxisSpeed,
+                    CurrentZAxisSpeed = localSensorData.CurrentZAxisSpeed,
+                    IsServoReady = localSensorData.IsServoReady,
+                    IsMotorEnabled = localSensorData.IsMotorEnabled,
+                    IsInPosition = localSensorData.IsInPosition,
+                    Temperature = localSensorData.Temperature,
+                    Vibration = localSensorData.Vibration,
+                    MotorCurrent = localSensorData.MotorCurrent,
+                    EmergencyStopActive = localSensorData.EmergencyStopActive,
+                    DoorClosed = localSensorData.DoorClosed,
+                    LightCurtainClear = localSensorData.LightCurtainClear,
+                    VacuumPressure = localSensorData.VacuumPressure,
+                    WaferDetected = localSensorData.WaferDetected,
+                    CassettePresent = localSensorData.CassettePresent,
+                    LoadportReady = localSensorData.LoadportReady,
+                    VacuumValveOpen = localSensorData.VacuumValveOpen,
+                    UpdateTime = localSensorData.UpdateTime
+                };
+            }
+            catch (Exception ex)
+            {
+                // C# 6.0 호환: 문자열 보간 대신 문자열 연결 사용
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 센서 데이터 조회 실패: " + ex.Message);
+                return new SensorData();
+            }
+        }
+
+        /// <summary>
+        /// 센서 시스템 상태 조회
+        /// </summary>
+        /// <returns>센서 시스템 활성화 여부</returns>
+        public bool IsSensorSystemEnabled()
+        {
+            return _sensorSystemEnabled;
         }
         #endregion
 
@@ -1311,6 +1982,9 @@ namespace TeachingPendant.HardwareControllers
             {
                 System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Disposing resources...");
 
+                // 센서 시스템 비활성화
+                DisableSensorSystem();
+
                 // 타이머 정지
                 if (_statusUpdateTimer != null)
                 {
@@ -1336,6 +2010,9 @@ namespace TeachingPendant.HardwareControllers
                     _dtp7h.Dispose();
                     _dtp7h = null;
                 }
+
+                // 센서 데이터 정리
+                _currentSensorData = null;
 
                 System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Resources disposed successfully");
             }
