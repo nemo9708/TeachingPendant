@@ -44,23 +44,63 @@ namespace TeachingPendant
         private Dictionary<string, Func<UserControl>> InitializeScreenFactories()
         {
             return new Dictionary<string, Func<UserControl>>
+    {
+        { "Movement", () => new MovementUI.Movement() },
+        { "Teaching", () => new TeachingPendant.TeachingUI.Teaching() },
+        { "Monitor", () => new MonitorUI.Monitor() },
+        { "Setting", () => new SetupUI.Setup() },
+        { "Mapping", () => CreateMappingPlaceholder() },
+        
+        // Recipe 시스템 화면
+        { "RecipeRunner", () => new TeachingPendant.RecipeSystem.UI.Views.RecipeRunner() },
+        { "RecipeEditor", () => CreateRecipeEditor() },
+        
+        // ErrorLogViewer 추가 - 권한 확인 포함
+        { "Error Log", () => CreateErrorLogViewer() },
+
+        { "I/O", () => CreateIOControl() },
+        { "System", () => CreatePlaceholderContent("System features will be implemented here") },
+        { "File Load", () => CreatePlaceholderContent("File Load features will be implemented here") },
+        { "HELP", () => CreatePlaceholderContent("Help features will be implemented here") }
+    };
+        }
+
+        /// <summary>
+        /// ErrorLogViewer 생성 (권한 확인 포함)
+        /// </summary>
+        private UserControl CreateErrorLogViewer()
+        {
+            try
             {
-                { "Movement", () => new MovementUI.Movement() },
-                { "Teaching", () => new TeachingPendant.TeachingUI.Teaching() },
-                { "Monitor", () => new MonitorUI.Monitor() },
-                { "Setting", () => new SetupUI.Setup() },
-                { "Mapping", () => CreateMappingPlaceholder() },
-                
-                // Recipe 시스템 화면 추가
-                { "RecipeRunner", () => new TeachingPendant.RecipeSystem.UI.Views.RecipeRunner() },
-                { "RecipeEditor", () => CreateRecipeEditor() },  // 새로 추가
-                
-                { "I/O", () => CreateIOControl() },
-                { "System", () => CreatePlaceholderContent("System features will be implemented here") },
-                { "File Load", () => CreatePlaceholderContent("File Load features will be implemented here") },
-                { "Error Log", () => CreatePlaceholderContent("Error Log features will be implemented here") },
-                { "HELP", () => CreatePlaceholderContent("Help features will be implemented here") }
-            };
+                // 권한 확인 - Error Log는 Operator 이상 접근 가능
+                if (!UserSession.IsLoggedIn || UserSession.CurrentUser.Role < UserRole.Operator)
+                {
+                    Logger.Warning("CommonFrame", "CreateErrorLogViewer", "Error Log 접근 권한 부족");
+                    return CreatePlaceholderContent(
+                        "Error Log 접근 권한이 없습니다.\n\n" +
+                        "Operator 이상의 권한이 필요합니다.\n" +
+                        "관리자에게 문의하세요.");
+                }
+
+                // ErrorLogViewer 인스턴스 생성
+                var errorLogViewer = new TeachingPendant.UI.Views.ErrorLogViewer();
+
+                Logger.Info("CommonFrame", "CreateErrorLogViewer", "Error Log Viewer가 생성되었습니다.");
+                AlarmMessageManager.ShowCustomMessage("Error Log Viewer가 로드되었습니다.", AlarmCategory.Information);
+
+                return errorLogViewer;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("CommonFrame", "CreateErrorLogViewer", "Error Log Viewer 생성 실패", ex);
+                AlarmMessageManager.ShowCustomMessage("Error Log Viewer 로드에 실패했습니다.", AlarmCategory.Error);
+
+                // 오류 발생 시 대체 내용 반환
+                return CreatePlaceholderContent(
+                    "Error Log Viewer 로드 실패\n\n" +
+                    $"오류: {ex.Message}\n\n" +
+                    "시스템 관리자에게 문의하세요.");
+            }
         }
 
         /// <summary>

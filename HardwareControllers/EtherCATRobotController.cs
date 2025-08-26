@@ -113,7 +113,7 @@ namespace TeachingPendant.HardwareControllers
         /// <summary>
         /// 센서 데이터 구조체
         /// </summary>
-        private class SensorData
+        public class SensorData
         {
             // 위치 센서 데이터
             public int ActualRAxisPulse { get; set; }
