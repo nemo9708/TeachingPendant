@@ -99,6 +99,7 @@
     <Compile Include="ErrorHandling\ErrorRecovery.cs" />
     <Compile Include="ErrorHandling\GlobalExceptionHandler.cs" />
     <Compile Include="HardwareControllers\DTP7HRobotExtension.cs" />
+    <Compile Include="HardwareControllers\EtherCATCommunication.cs" />
     <Compile Include="HardwareControllers\EtherCATRobotController.cs" />
     <Compile Include="HardwareControllers\HardwareDetector.cs" />
     <Compile Include="HardwareControllers\IRobotController.cs" />

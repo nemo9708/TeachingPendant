@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using TeachingPendant.Safety;
 using TeachingPendant.Manager;
+using TeachingPendant.Logging;
 
 namespace TeachingPendant.HardwareControllers
 {
@@ -99,6 +100,9 @@ namespace TeachingPendant.HardwareControllers
 
             // 센서 시스템 초기화 추가
             InitializeSensorSystem();
+
+            // EtherCAT 통신 초기화 추가
+            InitializeEtherCATCommunication();
 
             System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Controller initialization completed with sensor system");
         }
@@ -208,25 +212,59 @@ namespace TeachingPendant.HardwareControllers
         #endregion
 
         #region Connection Management
+        private EtherCATCommunication _etherCATComm;
+
+        /// <summary>
+        /// EtherCAT 통신 초기화 (생성자에 추가)
+        /// </summary>
+        private void InitializeEtherCATCommunication()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 통신 초기화");
+
+                _etherCATComm = new EtherCATCommunication();
+
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 통신 객체 생성 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 통신 초기화 실패: " + ex.Message);
+            }
+        }
+
         public async Task<bool> ConnectAsync()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Attempting to connect to DTP-7H robot...");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 연결 시도...");
 
-                // DTP-7H 연결
+                // 1. DTP-7H 연결 (기존 코드 유지)
                 bool dtp7hConnected = _dtp7h.Connect(_comPort, _baudRate);
                 if (!dtp7hConnected)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] DTP-7H connection failed");
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] DTP-7H 연결 실패");
                     OnErrorOccurred("DTP7H_CONNECT_ERROR", "DTP-7H connection failed");
                     return false;
                 }
 
-                // 연결 성공 표시 (기존 LED 제어 사용)
-                _dtp7h.SendLEDCommand(LEDPosition.LeftLED1, LEDColor.Blue);
+                // 2. EtherCAT 마스터 연결 추가
+                bool etherCATConnected = await _etherCATComm.ConnectAsync("ETC_ROBOT_01", 1);
+                if (!etherCATConnected)
+                {
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 연결 실패");
+                    OnErrorOccurred("ETHERCAT_CONNECT_ERROR", "EtherCAT Master connection failed");
 
-                // 초기화 시간
+                    // DTP-7H 연결 해제
+                    _dtp7h.Disconnect();
+                    return false;
+                }
+
+                // 3. 연결 성공 표시 - 기존 메서드명 사용
+                _dtp7h.SendLEDCommand(LEDPosition.LeftLED1, LEDColor.All); // EtherCAT 연결 성공
+                _dtp7h.SendLEDCommand(LEDPosition.RightLED1, LEDColor.Blue); // DTP-7H 연결 성공
+
+                // 4. 초기화 완료
                 await Task.Delay(1000);
 
                 lock (_lockObject)
@@ -235,29 +273,22 @@ namespace TeachingPendant.HardwareControllers
                     _isHomed = false;
                     _vacuumOn = false;
                     _currentPosition = new Position(0, 0, 0);
-                    _targetPosition = new Position(0, 0, 0);
-
-                    // 상태 업데이트 타이머 시작
-                    _statusUpdateTimer.Start();
                 }
 
-                // 센서 시스템 활성화 추가
+                // 5. 센서 시스템 활성화
                 EnableSensorSystem();
+                _statusUpdateTimer.Start();
 
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 연결 완료");
+
+                // 기존 이벤트 발생 방식 사용
                 UpdateStatus();
-
-                // 연결 확인 부저
-                _dtp7h.SendBuzzerCommand(true);
-                await Task.Delay(200);
-                _dtp7h.SendBuzzerCommand(false);
-
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT robot connected successfully with sensor system enabled");
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Connect failed: {ex.Message}");
-                OnErrorOccurred("CONNECT_ERROR", "Connection failed", ex);
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 연결 실패: " + ex.Message);
+                OnErrorOccurred("CONNECTION_ERROR", "Robot connection failed", ex);
                 return false;
             }
         }
@@ -266,41 +297,89 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Disconnecting EtherCAT robot...");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 연결 해제...");
 
-                // 진행 중인 동작 정지
-                await StopAsync();
+                // 1. 로봇 정지
+                if (_isMoving)
+                {
+                    await StopAsync();
+                }
+
+                // 2. 센서 시스템 비활성화
+                DisableSensorSystem();
+                _statusUpdateTimer.Stop();
+
+                // 3. EtherCAT 연결 해제
+                bool etherCATDisconnected = await _etherCATComm.DisconnectAsync();
+                if (!etherCATDisconnected)
+                {
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 연결 해제 경고");
+                }
+
+                // 4. DTP-7H 연결 해제
+                bool dtp7hDisconnected = _dtp7h.Disconnect();
+                if (!dtp7hDisconnected)
+                {
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] DTP-7H 연결 해제 경고");
+                }
 
                 lock (_lockObject)
                 {
-                    _statusUpdateTimer?.Stop();
                     _isConnected = false;
-                    _isMoving = false;
                     _isHomed = false;
-                    _vacuumOn = false;
-                }
-
-                // 연결 해제 표시 (모든 LED OFF)
-                if (_dtp7h != null && _dtp7h.IsConnected)
-                {
-                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED1, LEDColor.Off);
-                    _dtp7h.SendLEDCommand(LEDPosition.RightLED1, LEDColor.Off);
-
-                    // DTP-7H 연결 해제
-                    _dtp7h.Disconnect();
+                    _isMoving = false;
                 }
 
                 UpdateStatus();
 
-                await Task.Delay(200);
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 연결 해제 완료");
 
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT robot disconnected successfully");
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Disconnection failed: {ex.Message}");
-                OnErrorOccurred("DISCONNECT_ERROR", "EtherCAT robot disconnection failed", ex);
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 로봇 연결 해제 실패: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 실제 EtherCAT 이동 명령 전송 (기존 SendEtherCATMoveCommand 대체)
+        /// </summary>
+        private async Task<bool> SendActualEtherCATMoveCommand(RobotCoordinates coords)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 이동 명령 전송: " + coords.ToString());
+
+                // EtherCAT 통신을 통한 실제 이동 명령
+                bool commandSent = await _etherCATComm.SendMoveCommandAsync(
+                    coords.RAxisPulse,
+                    coords.ThetaAxisPulse,
+                    coords.ZAxisPulse,
+                    coords.Speed);
+
+                if (commandSent)
+                {
+                    // DTP-7H를 통한 상태 표시 - 기존 열거형 사용
+                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED2, LEDColor.Red); // 이동 중 표시
+
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 이동 명령 전송 성공");
+
+                    return true;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 이동 명령 전송 실패");
+
+                    // 오류 상태 표시
+                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED2, LEDColor.Red);
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 명령 전송 오류: " + ex.Message);
                 return false;
             }
         }
@@ -470,67 +549,132 @@ namespace TeachingPendant.HardwareControllers
         }
 
         /// <summary>
-        /// 실제 EtherCAT 홈 복귀 명령 실행
+        /// 실제 EtherCAT 홈 복귀 명령 (기존 ExecuteActualHomeCommand 수정)
         /// </summary>
-        /// <returns>홈 복귀 성공 여부</returns>
         private async Task<bool> ExecuteActualHomeCommand()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 EtherCAT 홈 복귀 명령 실행");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 홈 복귀 명령 실행");
 
-                // 홈 복귀용 특별 좌표 (0, 0, 0)
-                var homeCoords = new RobotCoordinates
+                // DTP-7H 홈 복귀 표시
+                _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.Red);
+
+                // 실제 EtherCAT 홈 복귀 명령
+                bool homeCommandSent = await _etherCATComm.SendHomeCommandAsync();
+
+                if (homeCommandSent)
                 {
-                    RAxisPulse = 0,      // 홈 위치 R축 펄스
-                    ThetaAxisPulse = 0,  // 홈 위치 Theta축 펄스  
-                    ZAxisPulse = 0,      // 홈 위치 Z축 펄스
-                    Speed = 30           // 홈 복귀는 안전을 위해 저속
-                };
+                    // 홈 복귀 완료까지 대기
+                    await WaitForHomeComplete(TimeSpan.FromSeconds(60));
 
-                // EtherCAT 홈 복귀 명령 전송
-                string homeCommand = $"HOME {homeCoords.Speed}\r\n"; // 실제 로봇 프로토콜에 맞게 수정
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 홈 복귀 명령 전송: {homeCommand.Trim()}");
+                    // 홈 위치로 현재 위치 업데이트
+                    lock (_lockObject)
+                    {
+                        _currentPosition = new Position(0, 0, 0);
+                        _isHomed = true;
+                    }
 
-                bool commandSent = await SendCommandToRobotController(homeCommand);
-                if (!commandSent)
+                    UpdateStatus();
+
+                    // 홈 복귀 완료 표시
+                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.All);
+
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 홈 복귀 완료");
+
+                    return true;
+                }
+                else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 홈 복귀 명령 전송 실패");
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 홈 복귀 명령 실패");
+
+                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.Red);
                     return false;
                 }
-
-                // 홈 복귀 완료까지 대기 (최대 60초)
-                await WaitForMovementCompletion(homeCoords, TimeSpan.FromSeconds(60));
-
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 EtherCAT 홈 복귀 완료");
-                return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 홈 복귀 실행 오류: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 홈 복귀 실행 오류: " + ex.Message);
+
+                _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.Red);
                 return false;
             }
         }
 
         /// <summary>
-        /// 로봇 정지 실제 EtherCAT 로봇 제어 적용
+        /// 홈 복귀 완료 대기
         /// </summary>
-        /// <returns>정지 성공 여부</returns>
+        /// <param name="timeout">최대 대기 시간</param>
+        /// <returns>홈 복귀 완료 여부</returns>
+        private async Task<bool> WaitForHomeComplete(TimeSpan timeout)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 홈 복귀 완료 대기 시작 (최대 " + timeout.TotalSeconds + "초)");
+
+                var startTime = DateTime.Now;
+                const int checkInterval = 500; // 500ms마다 상태 확인
+
+                while (DateTime.Now - startTime < timeout)
+                {
+                    // EtherCAT을 통한 로봇 상태 확인
+                    var robotStatus = await _etherCATComm.ReadRobotStatusAsync();
+
+                    if (robotStatus != null && robotStatus.IsInPosition && !robotStatus.IsMoving)
+                    {
+                        // 실제 위치 확인 (홈 위치 근처인지)
+                        var currentPos = await GetActualRobotPosition();
+                        if (currentPos != null && IsAtHomePosition(currentPos))
+                        {
+                            System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 홈 위치 도달 확인");
+                            return true;
+                        }
+                    }
+
+                    await Task.Delay(checkInterval);
+                }
+
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 홈 복귀 대기 시간 초과");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 홈 복귀 대기 오류: " + ex.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 홈 위치에 있는지 확인
+        /// </summary>
+        /// <param name="position">현재 위치</param>
+        /// <returns>홈 위치 여부</returns>
+        private bool IsAtHomePosition(RobotCoordinates position)
+        {
+            const int homeTolerance = 100; // 홈 위치 허용 오차 (pulse)
+
+            return Math.Abs(position.RAxisPulse) <= homeTolerance &&
+                   Math.Abs(position.ThetaAxisPulse) <= homeTolerance &&
+                   Math.Abs(position.ZAxisPulse) <= homeTolerance;
+        }
+
+        /// <summary>
+        /// 실제 EtherCAT 정지 명령 (기존 StopAsync 수정)
+        /// </summary>
         public async Task<bool> StopAsync()
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Stopping actual robot...");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 정지...");
 
-                // 정지 시작 표시 기존 LED 제어 사용
-                _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.Red);
-                _dtp7h.SendBuzzerCommand(true);
+                // DTP-7H 정지 표시
+                _dtp7h.SendLEDCommand(LEDPosition.LeftLED2, LEDColor.Red);
 
-                try
+                // 실제 EtherCAT 정지 명령
+                bool stopCommandSent = await _etherCATComm.SendStopCommandAsync();
+
+                if (stopCommandSent)
                 {
-                    // 실제 EtherCAT 정지 명령 실행 (기존 Task.Delay 대신)
-                    bool stopResult = await ExecuteActualStopCommand();
-
                     // 상태 업데이트
                     lock (_lockObject)
                     {
@@ -539,29 +683,25 @@ namespace TeachingPendant.HardwareControllers
 
                     UpdateStatus();
 
-                    if (stopResult)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Actual robot stop completed");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Actual robot stop failed");
-                    }
+                    // 정지 완료 표시
+                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED2, LEDColor.Blue);
 
-                    return stopResult;
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 정지 완료");
+
+                    return true;
                 }
-                finally
+                else
                 {
-                    // 정지 표시 정리 (200ms 후)
-                    await Task.Delay(200);
-                    _dtp7h.SendBuzzerCommand(false);
-                    _dtp7h.SendLEDCommand(LEDPosition.LeftLED3, LEDColor.Off);
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 정지 명령 실패");
+
+                    OnErrorOccurred("STOP_ERROR", "EtherCAT robot stop command failed");
+                    return false;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] StopAsync method failed: {ex.Message}");
-                OnErrorOccurred("STOP_ERROR", "Robot stop command failed", ex);
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 정지 실패: " + ex.Message);
+                OnErrorOccurred("STOP_EXCEPTION", "EtherCAT robot stop exception", ex);
                 return false;
             }
         }
@@ -1080,13 +1220,13 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 로봇 이동 시작: {start} -> {end}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 실제 로봇 이동 시작: " + start + " -> " + end);
 
                 // 1. 이동 거리 및 시간 계산
                 double distance = CalculateDistance(start, end);
                 int estimatedDuration = Math.Max(500, Math.Min(10000, (int)(distance * 50))); // 실제 로봇은 더 오래 걸림
 
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 예상 이동 시간: {estimatedDuration}ms, 거리: {distance:F2}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 예상 이동 시간: " + estimatedDuration + "ms, 거리: " + distance.ToString("F2"));
 
                 // 2. 로봇 좌표계로 변환
                 var startCoords = ConvertUserToRobotCoordinates(start.R, start.Theta, start.Z);
@@ -1098,8 +1238,8 @@ namespace TeachingPendant.HardwareControllers
                     throw new InvalidOperationException("목표 좌표가 로봇 동작 범위를 벗어났습니다");
                 }
 
-                // 4. EtherCAT 이동 명령 전송
-                bool commandSent = await SendEtherCATMoveCommand(endCoords);
+                // 4. EtherCAT 이동 명령 전송 - 메서드명 수정
+                bool commandSent = await SendActualEtherCATMoveCommand(endCoords); // ← 수정된 메서드명
                 if (!commandSent)
                 {
                     throw new InvalidOperationException("EtherCAT 이동 명령 전송 실패");
@@ -1108,11 +1248,11 @@ namespace TeachingPendant.HardwareControllers
                 // 5. 이동 완료까지 실시간 모니터링
                 await WaitForMovementCompletion(endCoords, TimeSpan.FromMilliseconds(estimatedDuration + 5000));
 
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 로봇 이동 완료: {end}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 실제 로봇 이동 완료: " + end);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 로봇 이동 실패: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 실제 로봇 이동 실패: " + ex.Message);
                 throw; // 상위 메서드에서 처리하도록 예외 재전파
             }
         }
@@ -1199,45 +1339,6 @@ namespace TeachingPendant.HardwareControllers
         }
 
         /// <summary>
-        /// EtherCAT 이동 명령 전송
-        /// </summary>
-        /// <param name="coords">목표 좌표</param>
-        /// <returns>명령 전송 성공 여부</returns>
-        private async Task<bool> SendEtherCATMoveCommand(RobotCoordinates coords)
-        {
-            try
-            {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT 이동 명령 전송 중...");
-
-                // 실제 로봇 컨트롤러 통신 프로토콜에 맞는 명령 문자열 생성
-                // 여기서는 시리얼 통신 예시 (실제로는 EtherCAT 라이브러리 사용)
-                string moveCommand = $"MOVE {coords.RAxisPulse} {coords.ThetaAxisPulse} {coords.ZAxisPulse} {coords.Speed}\r\n";
-
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 전송 명령: {moveCommand.Trim()}");
-
-                // DTP-7H를 통한 로봇 컨트롤러 통신
-                // 실제 환경에서는 시리얼 포트나 EtherCAT 통신 사용
-                bool communicationResult = await SendCommandToRobotController(moveCommand);
-
-                if (communicationResult)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT 이동 명령 전송 성공");
-                    return true;
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT 이동 명령 전송 실패");
-                    return false;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] EtherCAT 명령 전송 오류: {ex.Message}");
-                return false;
-            }
-        }
-
-        /// <summary>
         /// 로봇 컨트롤러에 명령 전송
         /// </summary>
         /// <param name="command">전송할 명령</param>
@@ -1272,15 +1373,15 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 이동 완료 대기 시작 (최대 {timeout.TotalSeconds}초)");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 이동 완료 대기 시작 (최대 " + timeout.TotalSeconds + "초)");
 
                 var startTime = DateTime.Now;
                 const int checkInterval = 100; // 100ms마다 상태 확인
 
                 while (DateTime.Now - startTime < timeout)
                 {
-                    // 실제 로봇 위치 조회
-                    var currentCoords = await GetCurrentRobotPosition();
+                    // 실제 로봇 위치 조회 - 메서드명 수정
+                    var currentCoords = await GetActualRobotPosition(); // ← 수정된 메서드명
                     if (currentCoords != null)
                     {
                         // 사용자 좌표계로 변환하여 현재 위치 업데이트
@@ -1289,7 +1390,7 @@ namespace TeachingPendant.HardwareControllers
                         // 목표 위치 도달 확인 (허용 오차 범위 내)
                         if (IsPositionReached(currentCoords, targetCoords))
                         {
-                            System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 목표 위치 도달 확인");
+                            System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 목표 위치 도달 확인");
                             return;
                         }
                     }
@@ -1298,36 +1399,50 @@ namespace TeachingPendant.HardwareControllers
                 }
 
                 // 타임아웃 발생
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 이동 완료 대기 시간 초과");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 이동 완료 대기 시간 초과");
                 throw new TimeoutException("로봇 이동 완료 대기 시간을 초과했습니다");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 이동 완료 대기 오류: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 이동 완료 대기 오류: " + ex.Message);
                 throw;
             }
         }
 
         /// <summary>
-        /// 현재 로봇 위치 조회
+        /// 실제 EtherCAT 현재 위치 조회 (기존 GetCurrentRobotPosition 대체)
         /// </summary>
-        /// <returns>현재 로봇 좌표</returns>
-        private async Task<RobotCoordinates> GetCurrentRobotPosition()
+        private async Task<RobotCoordinates> GetActualRobotPosition()
         {
             try
             {
-                // 실제 로봇으로부터 현재 위치 조회
-                string positionQuery = "GET_POSITION\r\n";
+                if (!_isConnected || _etherCATComm == null || !_etherCATComm.IsConnected)
+                {
+                    return null;
+                }
 
-                await Task.Delay(10); // 조회 지연 시뮬레이션
+                // 실제 EtherCAT을 통한 현재 위치 조회
+                var axisPosition = await _etherCATComm.ReadCurrentPositionAsync();
 
-                // 현재는 시뮬레이션 데이터 반환
-                // 실제 환경에서는 로봇 컨트롤러로부터 실제 엔코더 값 수신
-                return ConvertUserToRobotCoordinates(_currentPosition.R, _currentPosition.Theta, _currentPosition.Z);
+                if (axisPosition != null)
+                {
+                    var robotCoords = new RobotCoordinates
+                    {
+                        RAxisPulse = axisPosition.RAxisPulse,
+                        ThetaAxisPulse = axisPosition.ThetaAxisPulse,
+                        ZAxisPulse = axisPosition.ZAxisPulse,
+                        Speed = _currentSpeed
+                    };
+
+                    System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 현재 위치: " + robotCoords.ToString());
+                    return robotCoords;
+                }
+
+                return null;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 현재 위치 조회 실패: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 위치 조회 실패: " + ex.Message);
                 return null;
             }
         }
@@ -1525,24 +1640,87 @@ namespace TeachingPendant.HardwareControllers
 
                 _lastSensorUpdateTime = DateTime.Now;
 
-                // 1. 위치 센서 데이터 수집
-                await ReadPositionSensors();
+                // 1. EtherCAT을 통한 실제 위치 센서 데이터 수집
+                await ReadActualPositionSensors();
 
-                // 2. 상태 센서 데이터 수집
-                await ReadStatusSensors();
+                // 2. EtherCAT을 통한 실제 상태 센서 데이터 수집
+                await ReadActualStatusSensors();
 
-                // 3. 안전 센서 데이터 수집
+                // 3. 기존 안전 센서 및 I/O 센서 데이터 수집
                 await ReadSafetySensors();
-
-                // 4. I/O 센서 데이터 수집
                 await ReadIOSensors();
 
-                // 5. 센서 데이터 분석 및 처리
+                // 4. 센서 데이터 분석 및 처리
                 ProcessSensorData();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 센서 데이터 업데이트 실패: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 센서 데이터 업데이트 실패: {ex.Message}");
+                Logger.Error(CLASS_NAME, "UpdateSensorDataAsync", "실제 센서 데이터 업데이트 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 실제 위치 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadActualPositionSensors()
+        {
+            try
+            {
+                // EtherCAT을 통한 실제 엔코더 값 읽기
+                var actualPosition = await _etherCATComm.ReadCurrentPositionAsync();
+
+                if (actualPosition != null)
+                {
+                    _currentSensorData.ActualRAxisPulse = actualPosition.RAxisPulse;
+                    _currentSensorData.ActualThetaAxisPulse = actualPosition.ThetaAxisPulse;
+                    _currentSensorData.ActualZAxisPulse = actualPosition.ZAxisPulse;
+
+                    // 실제 속도 계산 (이전 위치와 비교)
+                    // 실제 구현에서는 EtherCAT에서 직접 속도 데이터를 읽어올 수 있음
+                    _currentSensorData.CurrentRAxisSpeed = _isMoving ? _currentSpeed : 0;
+                    _currentSensorData.CurrentThetaAxisSpeed = _isMoving ? _currentSpeed : 0;
+                    _currentSensorData.CurrentZAxisSpeed = _isMoving ? _currentSpeed : 0;
+
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 위치 센서: R={actualPosition.RAxisPulse}, T={actualPosition.ThetaAxisPulse}, Z={actualPosition.ZAxisPulse}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 위치 센서 읽기 실패: {ex.Message}");
+                Logger.Error(CLASS_NAME, "ReadActualPositionSensors", "실제 위치 센서 읽기 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 실제 상태 센서 데이터 읽기
+        /// </summary>
+        private async Task ReadActualStatusSensors()
+        {
+            try
+            {
+                // EtherCAT을 통한 실제 로봇 상태 읽기
+                var robotStatus = await _etherCATComm.ReadRobotStatusAsync();
+
+                if (robotStatus != null)
+                {
+                    _currentSensorData.IsServoReady = robotStatus.IsReady;
+                    _currentSensorData.IsMotorEnabled = robotStatus.IsConnected;
+                    _currentSensorData.IsInPosition = robotStatus.IsInPosition;
+
+                    // 실제 센서에서 읽어온 추가 정보들
+                    // (실제 로봇에서는 온도, 진동, 전류 센서가 있을 수 있음)
+                    _currentSensorData.Temperature = 25.0 + (DateTime.Now.Second % 10); // 시뮬레이션
+                    _currentSensorData.Vibration = _isMoving ? 0.02 + (DateTime.Now.Millisecond % 50) / 1000.0 : 0.01;
+                    _currentSensorData.MotorCurrent = _isMoving ? 2.0 + (_currentSpeed / 50.0) : 0.3;
+
+                    System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 상태 센서: Ready={robotStatus.IsReady}, InPos={robotStatus.IsInPosition}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] 실제 상태 센서 읽기 실패: {ex.Message}");
+                Logger.Error(CLASS_NAME, "ReadActualStatusSensors", "실제 상태 센서 읽기 실패", ex);
             }
         }
 
@@ -1980,45 +2158,57 @@ namespace TeachingPendant.HardwareControllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Disposing resources...");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 컨트롤러 리소스 정리 시작");
 
-                // 센서 시스템 비활성화
-                DisableSensorSystem();
+                // 연결 해제
+                if (_isConnected)
+                {
+                    DisconnectAsync().Wait(5000); // 5초 대기
+                }
 
-                // 타이머 정지
+                // 타이머 정리
                 if (_statusUpdateTimer != null)
                 {
                     _statusUpdateTimer.Stop();
                     _statusUpdateTimer = null;
                 }
 
-                // 연결 해제
+                // EtherCAT 리소스 정리
+                CleanupEtherCATResources();
+
+                // DTP-7H 리소스 정리
                 if (_dtp7h != null)
                 {
-                    try
-                    {
-                        if (_dtp7h.IsConnected)
-                        {
-                            DisconnectAsync().Wait(1000);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Error while disposing DTP-7H: {ex.Message}");
-                    }
-
                     _dtp7h.Dispose();
                     _dtp7h = null;
                 }
 
-                // 센서 데이터 정리
-                _currentSensorData = null;
-
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Resources disposed successfully");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 로봇 컨트롤러 리소스 정리 완료");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[{CLASS_NAME}] Dispose error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] 리소스 정리 실패: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// 리소스 정리
+        /// </summary>
+        private void CleanupEtherCATResources()
+        {
+            try
+            {
+                if (_etherCATComm != null)
+                {
+                    _etherCATComm.Dispose();
+                    _etherCATComm = null;
+                }
+
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 리소스 정리 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] EtherCAT 리소스 정리 실패: " + ex.Message);
             }
         }
         #endregion
