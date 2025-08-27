@@ -1,182 +1,174 @@
 ﻿<UserControl x:Class="TeachingPendant.UI.Views.ErrorLogViewer"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="#1E1E1E">
+             Background="#1E1E1E"
+             Loaded="OnViewerLoaded"
+             Unloaded="OnViewerUnloaded">
 
-    <!-- 스타일 정의 -->
     <UserControl.Resources>
-        <!-- 다크 테마 스타일 -->
-        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+        <!-- DataGrid 스타일 -->
+        <Style x:Key="LogDataGridStyle" TargetType="DataGrid">
             <Setter Property="Background" Value="#2D2D30"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="BorderBrush" Value="#3F3F46"/>
-            <Setter Property="Padding" Value="8,5"/>
-            <Setter Property="BorderThickness" Value="1"/>
-        </Style>
-
-        <Style x:Key="DarkComboBoxStyle" TargetType="ComboBox">
-            <Setter Property="Background" Value="#2D2D30"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#3F3F46"/>
-        </Style>
-
-        <Style x:Key="DarkButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#0E639C"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
-            <Setter Property="BorderBrush" Value="#1177BB"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="3">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="#1177BB"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Background" Value="#0B4F7A"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="DarkDataGridStyle" TargetType="DataGrid">
-            <Setter Property="Background" Value="#252526"/>
-            <Setter Property="Foreground" Value="#FFFFFF"/>
             <Setter Property="GridLinesVisibility" Value="Horizontal"/>
             <Setter Property="HorizontalGridLinesBrush" Value="#3F3F46"/>
+            <Setter Property="RowBackground" Value="#2D2D30"/>
+            <Setter Property="AlternatingRowBackground" Value="#252526"/>
             <Setter Property="HeadersVisibility" Value="Column"/>
-            <Setter Property="AutoGenerateColumns" Value="False"/>
             <Setter Property="CanUserAddRows" Value="False"/>
-            <Setter Property="CanUserDeleteRows" Value="False"/>
             <Setter Property="IsReadOnly" Value="True"/>
             <Setter Property="SelectionMode" Value="Single"/>
-            <Setter Property="AlternatingRowBackground" Value="#2D2D30"/>
+            <Setter Property="AutoGenerateColumns" Value="False"/>
+        </Style>
+
+        <!-- DataGrid 헤더 스타일 -->
+        <Style x:Key="DataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="BorderBrush" Value="#005A9E"/>
+            <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        </Style>
+
+        <!-- 로그 레벨별 색상 스타일 -->
+        <Style x:Key="ErrorRowStyle" TargetType="DataGridRow">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="Error">
+                    <Setter Property="Background" Value="#3D1A1A"/>
+                    <Setter Property="Foreground" Value="#FF6B6B"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="Warning">
+                    <Setter Property="Background" Value="#3D3D1A"/>
+                    <Setter Property="Foreground" Value="#FFEB3B"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="Info">
+                    <Setter Property="Foreground" Value="#4FC3F7"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="Debug">
+                    <Setter Property="Foreground" Value="#CCCCCC"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <!-- 필터 영역 -->
+            <!-- 툴바 -->
             <RowDefinition Height="*"/>
-            <!-- 메인 콘텐츠 영역 -->
+            <!-- 메인 컨텐츠 -->
             <RowDefinition Height="Auto"/>
             <!-- 상태바 -->
         </Grid.RowDefinitions>
 
-        <!-- 헤더 및 필터 영역 -->
-        <Border Grid.Row="0" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="15">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+        <!-- 툴바 -->
+        <Border Grid.Row="0" Background="#333337" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+            <Grid Margin="10,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-                <!-- 제목 영역 -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,15">
-                    <TextBlock Text="Error Log Viewer" 
-                               FontSize="20" 
-                               FontWeight="Bold" 
-                               Foreground="#FFFFFF" 
-                               VerticalAlignment="Center"/>
-                    <TextBlock Name="txtLogStatus" 
-                               Text="로그 로드 중..." 
-                               FontSize="12" 
-                               Foreground="#CCCCCC" 
-                               Margin="20,0,0,0" 
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-
-                <!-- 필터 컨트롤 영역 -->
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+                <!-- 왼쪽 컨트롤들 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- 새로고침 버튼 -->
+                    <Button Name="btnRefresh" 
+                            Content="🔄 새로고침" 
+                            Click="btnRefresh_Click"
+                            Background="#007ACC" 
+                            Foreground="#FFFFFF" 
+                            BorderBrush="#005A9E"
+                            Padding="10,5" 
+                            Margin="0,0,10,0"/>
 
                     <!-- 로그 레벨 필터 -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,20,0">
-                        <TextBlock Text="레벨:" 
-                                   Foreground="#CCCCCC" 
-                                   VerticalAlignment="Center" 
-                                   Margin="0,0,8,0"/>
-                        <ComboBox Name="cmbLogLevel" 
-                                  Style="{StaticResource DarkComboBoxStyle}"
-                                  Width="100"
-                                  SelectionChanged="OnLogLevelFilterChanged">
-                            <ComboBoxItem Content="All" IsSelected="True"/>
-                            <ComboBoxItem Content="Debug"/>
-                            <ComboBoxItem Content="Info"/>
-                            <ComboBoxItem Content="Warning"/>
-                            <ComboBoxItem Content="Error"/>
-                        </ComboBox>
-                    </StackPanel>
+                    <TextBlock Text="레벨:" 
+                               Foreground="#FFFFFF" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,5,0"/>
+                    <ComboBox Name="cmbLogLevel" 
+                              Width="100"
+                              SelectionChanged="cmbLogLevel_SelectionChanged"
+                              Background="#2D2D30" 
+                              Foreground="#FFFFFF">
+                        <ComboBoxItem Content="All" IsSelected="True"/>
+                        <ComboBoxItem Content="Error"/>
+                        <ComboBoxItem Content="Warning"/>
+                        <ComboBoxItem Content="Info"/>
+                        <ComboBoxItem Content="Debug"/>
+                    </ComboBox>
 
-                    <!-- 검색 텍스트 -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,20,0">
-                        <TextBlock Text="검색:" 
-                                   Foreground="#CCCCCC" 
-                                   VerticalAlignment="Center" 
-                                   Margin="0,0,8,0"/>
-                        <TextBox Name="txtSearch" 
-                                 Style="{StaticResource DarkTextBoxStyle}"
-                                 Width="200"
-                                 TextChanged="OnSearchTextChanged"/>
-                    </StackPanel>
+                    <!-- 모듈 필터 -->
+                    <TextBlock Text="모듈:" 
+                               Foreground="#FFFFFF" 
+                               VerticalAlignment="Center" 
+                               Margin="15,0,5,0"/>
+                    <ComboBox Name="cmbModule" 
+                              Width="120"
+                              SelectionChanged="cmbModule_SelectionChanged"
+                              Background="#2D2D30" 
+                              Foreground="#FFFFFF"/>
+                </StackPanel>
 
-                    <!-- 새로고침 버튼 -->
-                    <Button Grid.Column="2" 
-                            Name="btnRefresh"
-                            Content="새로고침" 
-                            Style="{StaticResource DarkButtonStyle}"
-                            Click="OnRefreshClick"
-                            Margin="0,0,10,0"/>
+                <!-- 가운데 검색 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" 
+                            HorizontalAlignment="Center" 
+                            VerticalAlignment="Center">
+                    <TextBlock Text="검색:" 
+                               Foreground="#FFFFFF" 
+                               VerticalAlignment="Center" 
+                               Margin="0,0,5,0"/>
+                    <TextBox Name="txtSearch" 
+                             Width="250"
+                             TextChanged="txtSearch_TextChanged"
+                             Background="#2D2D30" 
+                             Foreground="#FFFFFF" 
+                             BorderBrush="#3F3F46"/>
+                    <Button Name="btnClearSearch" 
+                            Content="✖" 
+                            Click="btnClearSearch_Click"
+                            Background="#FF6B6B" 
+                            Foreground="#FFFFFF" 
+                            Width="25" 
+                            Margin="5,0,0,0"/>
+                </StackPanel>
+
+                <!-- 오른쪽 컨트롤들 -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- 실시간 모니터링 토글 -->
+                    <CheckBox Name="chkRealTime" 
+                              Content="실시간" 
+                              IsChecked="True"
+                              Checked="chkRealTime_CheckedChanged"
+                              Unchecked="chkRealTime_CheckedChanged"
+                              Foreground="#FFFFFF" 
+                              Margin="0,0,15,0"/>
 
                     <!-- 내보내기 버튼 -->
-                    <Button Grid.Column="3" 
-                            Name="btnExport"
-                            Content="내보내기" 
-                            Style="{StaticResource DarkButtonStyle}"
-                            Click="OnExportClick"
+                    <Button Name="btnExport" 
+                            Content="📄 내보내기" 
+                            Click="btnExport_Click"
+                            Background="#4CAF50" 
+                            Foreground="#FFFFFF" 
+                            Padding="10,5" 
                             Margin="0,0,10,0"/>
 
-                    <!-- 삭제 버튼 -->
-                    <Button Grid.Column="4" 
-                            Name="btnClear"
-                            Content="로그 삭제" 
-                            Style="{StaticResource DarkButtonStyle}"
-                            Background="#C72D25"
-                            BorderBrush="#E74C3C"
-                            Click="OnClearClick"
-                            Margin="0,0,10,0"/>
-
-                    <!-- 실시간 업데이트 토글 -->
-                    <CheckBox Grid.Column="5" 
-                              Name="chkRealTime"
-                              Content="실시간 업데이트" 
-                              Foreground="#FFFFFF"
-                              IsChecked="True"
-                              Checked="OnRealTimeToggled"
-                              Unchecked="OnRealTimeToggled"/>
-                </Grid>
+                    <!-- 로그 삭제 버튼 -->
+                    <Button Name="btnClearLogs" 
+                            Content="🗑️ 모두 삭제" 
+                            Click="btnClearLogs_Click"
+                            Background="#FF6B6B" 
+                            Foreground="#FFFFFF" 
+                            Padding="10,5"/>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 메인 콘텐츠 영역 -->
+        <!-- 메인 컨텐츠 -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="2*"/>
@@ -185,90 +177,91 @@
             </Grid.ColumnDefinitions>
 
             <!-- 로그 목록 -->
-            <DataGrid Grid.Column="0" 
-                      Name="dgLogEntries"
-                      Style="{StaticResource DarkDataGridStyle}"
-                      SelectionChanged="OnLogEntrySelected">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="시간" 
-                                        Binding="{Binding TimeStamp}" 
-                                        Width="140"/>
-                    <DataGridTextColumn Header="레벨" 
-                                        Binding="{Binding Level}" 
-                                        Width="70"/>
-                    <DataGridTextColumn Header="모듈" 
-                                        Binding="{Binding Module}" 
-                                        Width="100"/>
-                    <DataGridTextColumn Header="메서드" 
-                                        Binding="{Binding Method}" 
-                                        Width="120"/>
-                    <DataGridTextColumn Header="메시지" 
-                                        Binding="{Binding Message}" 
-                                        Width="*"/>
-                </DataGrid.Columns>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
 
-                <!-- 로그 레벨별 색상 표시 -->
-                <DataGrid.RowStyle>
-                    <Style TargetType="DataGridRow">
-                        <Setter Property="Background" Value="#252526"/>
-                        <Setter Property="Foreground" Value="#FFFFFF"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding Level}" Value="Error">
-                                <Setter Property="Background" Value="#3D1A1A"/>
-                                <Setter Property="Foreground" Value="#FF6B6B"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Warning">
-                                <Setter Property="Background" Value="#3D3A1A"/>
-                                <Setter Property="Foreground" Value="#FFE066"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Info">
-                                <Setter Property="Background" Value="#1A2A3D"/>
-                                <Setter Property="Foreground" Value="#66B3FF"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding Level}" Value="Debug">
-                                <Setter Property="Background" Value="#252526"/>
-                                <Setter Property="Foreground" Value="#CCCCCC"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
-            </DataGrid>
+                <!-- 로그 상태 -->
+                <Border Grid.Row="0" Background="#333337" Padding="10,5">
+                    <TextBlock Name="txtLogStatus" 
+                               Text="로그 로딩 중..." 
+                               Foreground="#FFFFFF" 
+                               FontSize="12"/>
+                </Border>
 
-            <!-- 분할선 -->
+                <!-- 로그 DataGrid -->
+                <DataGrid Grid.Row="1" 
+                          Name="dgLogs"
+                          Style="{StaticResource LogDataGridStyle}"
+                          RowStyle="{StaticResource ErrorRowStyle}"
+                          SelectionChanged="dgLogs_SelectionChanged">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="시간" 
+                                            Binding="{Binding TimeStamp}" 
+                                            Width="140"
+                                            HeaderStyle="{StaticResource DataGridColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="레벨" 
+                                            Binding="{Binding Level}" 
+                                            Width="70"
+                                            HeaderStyle="{StaticResource DataGridColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="모듈" 
+                                            Binding="{Binding Module}" 
+                                            Width="120"
+                                            HeaderStyle="{StaticResource DataGridColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="메서드" 
+                                            Binding="{Binding Method}" 
+                                            Width="150"
+                                            HeaderStyle="{StaticResource DataGridColumnHeaderStyle}"/>
+                        <DataGridTextColumn Header="메시지" 
+                                            Binding="{Binding Message}" 
+                                            Width="*"
+                                            HeaderStyle="{StaticResource DataGridColumnHeaderStyle}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+
+            <!-- 구분선 -->
             <GridSplitter Grid.Column="1" 
                           Background="#3F3F46" 
                           HorizontalAlignment="Stretch"/>
 
-            <!-- 상세 정보 패널 -->
-            <Grid Grid.Column="2" Background="#2D2D30">
+            <!-- 로그 상세 정보 -->
+            <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- 상세 정보 헤더 -->
-                <Border Grid.Row="0" BorderBrush="#3F3F46" BorderThickness="0,0,0,1" Padding="15,10">
+                <!-- 상세 헤더 -->
+                <Border Grid.Row="0" Background="#333337" Padding="15,10">
                     <TextBlock Text="로그 상세 정보" 
+                               Foreground="#FFFFFF" 
                                FontWeight="Bold" 
-                               Foreground="#FFFFFF"/>
+                               FontSize="14"/>
                 </Border>
 
-                <!-- 상세 정보 내용 -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="15">
-                    <StackPanel Name="spLogDetails">
+                <!-- 상세 내용 -->
+                <ScrollViewer Grid.Row="1" Background="#2D2D30" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Name="pnlLogDetails" Margin="15">
                         <TextBlock Name="txtDetailTime" 
-                                   Foreground="#CCCCCC" 
-                                   TextWrapping="Wrap" 
+                                   Foreground="#4FC3F7" 
+                                   FontWeight="Bold" 
                                    Margin="0,0,0,10"/>
                         <TextBlock Name="txtDetailLevel" 
-                                   Foreground="#CCCCCC" 
-                                   TextWrapping="Wrap" 
+                                   Foreground="#FFEB3B" 
+                                   FontWeight="Bold" 
                                    Margin="0,0,0,10"/>
                         <TextBlock Name="txtDetailModule" 
-                                   Foreground="#CCCCCC" 
-                                   TextWrapping="Wrap" 
+                                   Foreground="#4CAF50" 
+                                   FontWeight="Bold" 
                                    Margin="0,0,0,10"/>
+                        <TextBlock Name="txtDetailMethod" 
+                                   Foreground="#FF9800" 
+                                   FontWeight="Bold" 
+                                   Margin="0,0,0,15"/>
                         <TextBlock Name="txtDetailMessage" 
                                    Foreground="#FFFFFF" 
                                    TextWrapping="Wrap" 

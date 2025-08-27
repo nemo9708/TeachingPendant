@@ -317,7 +317,8 @@ namespace TeachingPendant.HardwareControllers
                 }
 
                 // 4. DTP-7H 연결 해제
-                bool dtp7hDisconnected = _dtp7h.Disconnect();
+                _dtp7h.Disconnect();
+                bool dtp7hDisconnected = true;
                 if (!dtp7hDisconnected)
                 {
                     System.Diagnostics.Debug.WriteLine("[" + CLASS_NAME + "] DTP-7H 연결 해제 경고");

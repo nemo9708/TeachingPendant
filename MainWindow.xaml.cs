@@ -14,6 +14,7 @@ using TeachingPendant.Safety;
 using TeachingPendant.UserManagement.Models;
 using TeachingPendant.UserManagement.Services;
 using TeachingPendant.VirtualKeyboard;
+using TeachingPendant.Logging;
 
 
 namespace TeachingPendant
@@ -710,9 +711,17 @@ namespace TeachingPendant
                 {
                     System.Diagnostics.Debug.WriteLine("=== F12 key pressed! Movement Physics Test ===");
                 }
+                // Ctrl + L로 로그 뷰어 열기
+                else if (e.Key == Key.L && Keyboard.Modifiers == ModifierKeys.Control)
+                {
+                    ShowErrorLogViewer();
+                    e.Handled = true;
+                }
+                // 다른 기존 키보드 단축키들도 여기에...
             }
             catch (Exception ex)
             {
+                Logger.Error("MainWindow", "MainWindow_KeyDown", "키보드 이벤트 처리 실패", ex);
                 System.Diagnostics.Debug.WriteLine($"MainWindow: KeyDown event error: {ex.Message}");
             }
         }
@@ -1023,6 +1032,649 @@ namespace TeachingPendant
             {
                 base.OnClosed(e);
             }
+        }
+        #endregion
+
+        // MainWindow.xaml.cs에 추가해야 할 누락된 이벤트 핸들러들
+
+        #region Menu Event Handlers - 누락된 핸들러들
+        /// <summary>
+        /// About 메뉴 클릭
+        /// </summary>
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var aboutMessage = "TeachingPendant v1.0\n\n" +
+                                  "웨이퍼 반송 로봇 제어 시스템\n" +
+                                  "Copyright © 2025\n\n" +
+                                  "Built with .NET Framework and WPF";
+
+                MessageBox.Show(aboutMessage, "About TeachingPendant",
+                               MessageBoxButton.OK, MessageBoxImage.Information);
+
+                Logger.Info("MainWindow", "About_Click", "About 대화상자 표시됨");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "About_Click", "About 대화상자 표시 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// Exit 메뉴 클릭
+        /// </summary>
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var result = MessageBox.Show("프로그램을 종료하시겠습니까?", "종료 확인",
+                                           MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    Logger.Info("MainWindow", "Exit_Click", "사용자가 프로그램 종료 선택");
+                    Application.Current.Shutdown();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "Exit_Click", "프로그램 종료 처리 실패", ex);
+                Application.Current.Shutdown(); // 오류가 있어도 강제 종료
+            }
+        }
+
+        /// <summary>
+        /// 새 레시피 메뉴 클릭
+        /// </summary>
+        private void NewRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 새 레시피 생성");
+
+                // 기존 레시피가 수정되었으면 저장할지 확인
+                // TODO: 레시피 편집기와 연동하여 수정 여부 확인
+
+                Logger.Info("MainWindow", "NewRecipe_Click", "새 레시피 생성 요청");
+                AlarmMessageManager.ShowCustomMessage("새 레시피를 생성합니다", AlarmCategory.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "NewRecipe_Click", "새 레시피 생성 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 레시피 열기 메뉴 클릭
+        /// </summary>
+        private void OpenRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 레시피 열기");
+
+                var openDialog = new Microsoft.Win32.OpenFileDialog
+                {
+                    Title = "레시피 파일 열기",
+                    Filter = "Recipe Files (*.json)|*.json|All Files (*.*)|*.*",
+                    DefaultExt = "json"
+                };
+
+                if (openDialog.ShowDialog() == true)
+                {
+                    var filePath = openDialog.FileName;
+                    Logger.Info("MainWindow", "OpenRecipe_Click", $"레시피 파일 열기: {filePath}");
+                    AlarmMessageManager.ShowCustomMessage($"레시피를 로드합니다: {System.IO.Path.GetFileName(filePath)}", AlarmCategory.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "OpenRecipe_Click", "레시피 열기 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 레시피 저장 메뉴 클릭
+        /// </summary>
+        private void SaveRecipe_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 레시피 저장");
+
+                var saveDialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "레시피 파일 저장",
+                    Filter = "Recipe Files (*.json)|*.json|All Files (*.*)|*.*",
+                    DefaultExt = "json"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    var filePath = saveDialog.FileName;
+                    Logger.Info("MainWindow", "SaveRecipe_Click", $"레시피 파일 저장: {filePath}");
+                    AlarmMessageManager.ShowCustomMessage($"레시피를 저장합니다: {System.IO.Path.GetFileName(filePath)}", AlarmCategory.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "SaveRecipe_Click", "레시피 저장 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 로그 뷰어 메뉴 클릭
+        /// </summary>
+        private void Menu_LogViewer_Click(object sender, RoutedEventArgs e)
+        {
+            ShowErrorLogViewer();
+        }
+
+        /// <summary>
+        /// 시스템 설정 메뉴 클릭
+        /// </summary>
+        private void Menu_SystemSettings_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 시스템 설정 열기");
+                Logger.Info("MainWindow", "Menu_SystemSettings_Click", "시스템 설정 창 열기 요청");
+                AlarmMessageManager.ShowCustomMessage("시스템 설정 기능은 구현 예정입니다", AlarmCategory.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "Menu_SystemSettings_Click", "시스템 설정 열기 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 하드웨어 연결 메뉴 클릭
+        /// </summary>
+        private void Menu_HardwareConnection_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 하드웨어 연결 관리");
+                Logger.Info("MainWindow", "Menu_HardwareConnection_Click", "하드웨어 연결 관리 요청");
+                AlarmMessageManager.ShowCustomMessage("하드웨어 연결 관리 기능은 구현 예정입니다", AlarmCategory.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "Menu_HardwareConnection_Click", "하드웨어 연결 관리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 진단 도구 메뉴 클릭
+        /// </summary>
+        private void Menu_DiagnosticTools_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 진단 도구 열기");
+                Logger.Info("MainWindow", "Menu_DiagnosticTools_Click", "진단 도구 열기 요청");
+                AlarmMessageManager.ShowCustomMessage("진단 도구 기능은 구현 예정입니다", AlarmCategory.Information);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "Menu_DiagnosticTools_Click", "진단 도구 열기 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 에러 로그 뷰어 표시 (ErrorLogViewer 통합용)
+        /// </summary>
+        private void ShowErrorLogViewer()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 에러 로그 뷰어 열기");
+
+                // 새 창에서 에러 로그 뷰어 열기
+                var logViewerWindow = new Window
+                {
+                    Title = "TeachingPendant - 로그 뷰어",
+                    Width = 1200,
+                    Height = 800,
+                    WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                    Icon = this.Icon // 메인 윈도우와 같은 아이콘 사용
+                };
+
+                // ErrorLogViewer UserControl을 창의 Content로 설정
+                var errorLogViewer = new UI.Views.ErrorLogViewer();
+                logViewerWindow.Content = errorLogViewer;
+
+                // 창 표시
+                logViewerWindow.Show();
+
+                Logger.Info("MainWindow", "ShowErrorLogViewer", "에러 로그 뷰어 창 열림");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "ShowErrorLogViewer", "에러 로그 뷰어 열기 실패", ex);
+                AlarmMessageManager.ShowCustomMessage("로그 뷰어를 열 수 없습니다", AlarmCategory.Error);
+            }
+        }
+        #endregion
+
+        #region RecipeHub Integration
+        /// <summary>
+        /// RecipeHub 인스턴스
+        /// </summary>
+        private RecipeHub _recipeHub;
+
+        /// <summary>
+        /// RecipeHub 초기화 (MainWindow 로드 시 호출)
+        /// </summary>
+        private async void InitializeRecipeHub()
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] RecipeHub 초기화 시작");
+
+                // RecipeHub 인스턴스 가져오기
+                _recipeHub = RecipeHub.Instance;
+
+                // RecipeHub 이벤트 구독
+                _recipeHub.StatusChanged += RecipeHub_StatusChanged;
+                _recipeHub.StepExecutionStarted += RecipeHub_StepExecutionStarted;
+                _recipeHub.StepExecutionCompleted += RecipeHub_StepExecutionCompleted;
+                _recipeHub.ExecutionCompleted += RecipeHub_ExecutionCompleted;
+                _recipeHub.ErrorOccurred += RecipeHub_ErrorOccurred;
+
+                // RecipeHub 비동기 초기화
+                var initSuccess = await _recipeHub.InitializeAsync();
+
+                if (initSuccess)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] RecipeHub 초기화 성공");
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_INITIALIZED, "레시피 시스템이 준비되었습니다");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] RecipeHub 초기화 실패");
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "레시피 시스템 초기화 실패");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] RecipeHub 초기화 오류: {ex.Message}");
+                Logger.Error("MainWindow", "InitializeRecipeHub", "RecipeHub 초기화 실패", ex);
+                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "레시피 시스템 오류");
+            }
+        }
+
+        /// <summary>
+        /// RecipeHub 정리 (MainWindow 닫힐 때 호출)
+        /// </summary>
+        private void CleanupRecipeHub()
+        {
+            try
+            {
+                if (_recipeHub != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] RecipeHub 정리 시작");
+
+                    // 이벤트 구독 해제
+                    _recipeHub.StatusChanged -= RecipeHub_StatusChanged;
+                    _recipeHub.StepExecutionStarted -= RecipeHub_StepExecutionStarted;
+                    _recipeHub.StepExecutionCompleted -= RecipeHub_StepExecutionCompleted;
+                    _recipeHub.ExecutionCompleted -= RecipeHub_ExecutionCompleted;
+                    _recipeHub.ErrorOccurred -= RecipeHub_ErrorOccurred;
+
+                    // RecipeHub 리소스 정리
+                    _recipeHub.Dispose();
+                    _recipeHub = null;
+
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] RecipeHub 정리 완료");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] RecipeHub 정리 오류: {ex.Message}");
+                Logger.Error("MainWindow", "CleanupRecipeHub", "RecipeHub 정리 실패", ex);
+            }
+        }
+        #endregion
+
+        #region RecipeHub Event Handlers
+        /// <summary>
+        /// RecipeHub 상태 변경 이벤트
+        /// </summary>
+        private void RecipeHub_StatusChanged(object sender, RecipeSystemStatusChangedEventArgs e)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    // 메인 UI에 레시피 상태 표시
+                    UpdateRecipeStatusInUI(e.NewStatus);
+
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] 레시피 상태 변경: {e.NewStatus}");
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "RecipeHub_StatusChanged", "레시피 상태 변경 이벤트 처리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// RecipeHub 스텝 실행 시작 이벤트
+        /// </summary>
+        private void RecipeHub_StepExecutionStarted(object sender, RecipeStepExecutionEventArgs e)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    // UI에 현재 실행 중인 스텝 표시
+                    var statusMessage = $"실행 중: {e.Step.Description} (Step {e.StepIndex + 1})";
+                    AlarmMessageManager.ShowAlarm(Alarms.STATUS_UPDATE, statusMessage);
+
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] 스텝 실행 시작: {e.Step.Description}");
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "RecipeHub_StepExecutionStarted", "스텝 실행 시작 이벤트 처리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// RecipeHub 스텝 실행 완료 이벤트
+        /// </summary>
+        private void RecipeHub_StepExecutionCompleted(object sender, RecipeStepExecutionEventArgs e)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (e.Success == true)
+                    {
+                        var statusMessage = $"완료: {e.Step.Description}";
+                        AlarmMessageManager.ShowAlarm(Alarms.STATUS_UPDATE, statusMessage);
+                    }
+                    else
+                    {
+                        var statusMessage = $"실패: {e.Step.Description}";
+                        AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, statusMessage);
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] 스텝 실행 완료: {e.Step.Description} - {(e.Success == true ? "성공" : "실패")}");
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "RecipeHub_StepExecutionCompleted", "스텝 실행 완료 이벤트 처리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// RecipeHub 실행 완료 이벤트
+        /// </summary>
+        private void RecipeHub_ExecutionCompleted(object sender, RecipeExecutionCompletedEventArgs e)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (e.Success)
+                    {
+                        AlarmMessageManager.ShowAlarm(Alarms.STATUS_UPDATE, "레시피 실행이 성공적으로 완료되었습니다");
+                        System.Diagnostics.Debug.WriteLine("[MainWindow] 레시피 실행 성공");
+                    }
+                    else
+                    {
+                        var errorMessage = string.IsNullOrEmpty(e.ErrorMessage) ? "알 수 없는 오류" : e.ErrorMessage;
+                        AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, $"레시피 실행 실패: {errorMessage}");
+                        System.Diagnostics.Debug.WriteLine($"[MainWindow] 레시피 실행 실패: {errorMessage}");
+                    }
+
+                    // UI 상태 업데이트
+                    UpdateRecipeStatusInUI(_recipeHub.Status);
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "RecipeHub_ExecutionCompleted", "실행 완료 이벤트 처리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// RecipeHub 오류 발생 이벤트
+        /// </summary>
+        private void RecipeHub_ErrorOccurred(object sender, RecipeErrorEventArgs e)
+        {
+            try
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    var errorMessage = $"레시피 오류 [{e.ErrorCode}]: {e.ErrorMessage}";
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, errorMessage);
+
+                    System.Diagnostics.Debug.WriteLine($"[MainWindow] 레시피 오류: {errorMessage}");
+
+                    // 심각한 오류인 경우 추가 처리
+                    if (e.ErrorCode.Contains("HARDWARE") || e.ErrorCode.Contains("SAFETY"))
+                    {
+                        // 긴급 정지 또는 추가 안전 조치
+                        HandleCriticalRecipeError(e);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "RecipeHub_ErrorOccurred", "오류 이벤트 처리 실패", ex);
+            }
+        }
+        #endregion
+
+        #region Recipe UI Helper Methods
+        /// <summary>
+        /// UI에 레시피 상태 업데이트
+        /// </summary>
+        /// <param name="status">새로운 상태</param>
+        private void UpdateRecipeStatusInUI(RecipeSystemStatus status)
+        {
+            try
+            {
+                // 상태에 따른 UI 업데이트
+                switch (status)
+                {
+                    case RecipeSystemStatus.Idle:
+                        // 버튼 상태 등 UI 업데이트
+                        break;
+
+                    case RecipeSystemStatus.Loading:
+                        // 로딩 표시
+                        break;
+
+                    case RecipeSystemStatus.Ready:
+                        // 실행 준비됨 표시
+                        break;
+
+                    case RecipeSystemStatus.Executing:
+                        // 실행 중 표시
+                        break;
+
+                    case RecipeSystemStatus.Paused:
+                        // 일시정지 표시
+                        break;
+
+                    case RecipeSystemStatus.Error:
+                        // 오류 상태 표시
+                        break;
+
+                    case RecipeSystemStatus.Completed:
+                        // 완료 상태 표시
+                        break;
+                }
+
+                // 알람 메시지에 상태 정보 표시
+                var statusText = GetStatusDisplayText(status);
+                if (!string.IsNullOrEmpty(statusText))
+                {
+                    txtAlarmMessage.Text = $"레시피: {statusText}";
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "UpdateRecipeStatusInUI", "레시피 상태 UI 업데이트 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 상태를 UI 표시용 텍스트로 변환
+        /// </summary>
+        /// <param name="status">레시피 상태</param>
+        /// <returns>표시용 텍스트</returns>
+        private string GetStatusDisplayText(RecipeSystemStatus status)
+        {
+            switch (status)
+            {
+                case RecipeSystemStatus.Idle: return "대기 중";
+                case RecipeSystemStatus.Loading: return "로딩 중";
+                case RecipeSystemStatus.Ready: return "실행 준비됨";
+                case RecipeSystemStatus.Executing: return "실행 중";
+                case RecipeSystemStatus.Paused: return "일시정지";
+                case RecipeSystemStatus.Error: return "오류";
+                case RecipeSystemStatus.Completed: return "완료";
+                default: return "";
+            }
+        }
+
+        /// <summary>
+        /// 치명적인 레시피 오류 처리
+        /// </summary>
+        /// <param name="errorArgs">오류 정보</param>
+        private void HandleCriticalRecipeError(RecipeErrorEventArgs errorArgs)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[MainWindow] 치명적 레시피 오류 처리: {errorArgs.ErrorCode}");
+
+                // 하드웨어 관련 오류
+                if (errorArgs.ErrorCode.Contains("HARDWARE"))
+                {
+                    // 로봇 긴급 정지
+                    if (_robotController != null)
+                    {
+                        Task.Run(async () => await _robotController.StopAsync());
+                    }
+                }
+
+                // 안전 시스템 관련 오류  
+                if (errorArgs.ErrorCode.Contains("SAFETY"))
+                {
+                    // 전체 시스템 안전 모드 전환
+                    GlobalModeManager.SetMode(GlobalMode.Emergency);
+                }
+
+                // 사용자에게 중요 알림
+                MessageBox.Show(
+                    $"심각한 오류가 발생했습니다.\n\n" +
+                    $"오류 코드: {errorArgs.ErrorCode}\n" +
+                    $"오류 메시지: {errorArgs.ErrorMessage}\n\n" +
+                    $"시스템을 점검해주세요.",
+                    "치명적 오류",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "HandleCriticalRecipeError", "치명적 오류 처리 실패", ex);
+            }
+        }
+
+        /// <summary>
+        /// 테스트용 레시피 실행 (F9 키 등에서 호출)
+        /// </summary>
+        private async void TestRecipeExecution()
+        {
+            try
+            {
+                if (_recipeHub == null)
+                {
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "레시피 시스템이 초기화되지 않았습니다");
+                    return;
+                }
+
+                System.Diagnostics.Debug.WriteLine("[MainWindow] 테스트 레시피 실행");
+
+                // 간단한 테스트 레시피 생성
+                var testRecipe = CreateTestRecipe();
+
+                // 레시피 로드
+                var loadSuccess = await _recipeHub.LoadRecipeAsync(testRecipe);
+                if (!loadSuccess)
+                {
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "테스트 레시피 로드 실패");
+                    return;
+                }
+
+                // 레시피 실행
+                var executeSuccess = await _recipeHub.StartExecutionAsync();
+                if (executeSuccess)
+                {
+                    System.Diagnostics.Debug.WriteLine("[MainWindow] 테스트 레시피 실행 시작됨");
+                }
+                else
+                {
+                    AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "테스트 레시피 실행 실패");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("MainWindow", "TestRecipeExecution", "테스트 레시피 실행 실패", ex);
+                AlarmMessageManager.ShowAlarm(Alarms.SYSTEM_ERROR, "테스트 레시피 실행 중 오류 발생");
+            }
+        }
+
+        /// <summary>
+        /// 간단한 테스트 레시피 생성
+        /// </summary>
+        /// <returns>테스트용 TransferRecipe</returns>
+        private TransferRecipe CreateTestRecipe()
+        {
+            var testRecipe = new TransferRecipe("테스트 레시피", "RecipeHub 테스트용 레시피");
+
+            // 몇 개의 기본 스텝 추가
+            testRecipe.AddStep(new RecipeStep
+            {
+                StepNumber = 1,
+                Type = StepType.Move,
+                Description = "안전 위치로 이동",
+                TargetPosition = new Position(100, 0, 50),
+                Speed = 30,
+                TeachingGroup = "Group1",
+                LocationName = "P1"
+            });
+
+            testRecipe.AddStep(new RecipeStep
+            {
+                StepNumber = 2,
+                Type = StepType.Pick,
+                Description = "웨이퍼 픽업",
+                TargetPosition = new Position(120, 45, 30),
+                Speed = 20,
+                TeachingGroup = "Group1",
+                LocationName = "P2"
+            });
+
+            testRecipe.AddStep(new RecipeStep
+            {
+                StepNumber = 3,
+                Type = StepType.Place,
+                Description = "웨이퍼 배치",
+                TargetPosition = new Position(150, 90, 40),
+                Speed = 25,
+                TeachingGroup = "Group1",
+                LocationName = "P3"
+            });
+
+            return testRecipe;
         }
         #endregion
     }

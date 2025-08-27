@@ -8,8 +8,21 @@
         Title="Robot Teaching Pendant" Height="400" Width="600"
         WindowStartupLocation="CenterScreen"
         Background="LightGray">
+    <Window.Resources>
+        <Style TargetType="MenuItem">
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="#3E3E42"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <!--메뉴 바-->
             <RowDefinition Height="Auto"/>
             <!-- 상단 헤더 -->
             <RowDefinition Height="*"/>
@@ -18,13 +31,79 @@
             <!-- 하단 날짜/시간 -->
         </Grid.RowDefinitions>
 
+        <Menu Grid.Row="0" Background="#2D2D30" Foreground="#FFFFFF">
+            <!-- 기존 File 메뉴 -->
+            <MenuItem Header="파일">
+                <MenuItem Header="새 레시피" Click="NewRecipe_Click"/>
+                <MenuItem Header="레시피 열기" Click="OpenRecipe_Click"/>
+                <MenuItem Header="레시피 저장" Click="SaveRecipe_Click"/>
+                <Separator/>
+                <MenuItem Header="종료" Click="Exit_Click"/>
+            </MenuItem>
+
+            <!-- 기존 Edit 메뉴 -->
+            <MenuItem Header="편집">
+                <MenuItem Header="실행 취소"/>
+                <MenuItem Header="다시 실행"/>
+                <Separator/>
+                <MenuItem Header="복사"/>
+                <MenuItem Header="붙여넣기"/>
+            </MenuItem>
+
+            <!-- 새로 추가된 Tools 메뉴 -->
+            <MenuItem Header="도구">
+                <MenuItem Header="로그 뷰어" Click="Menu_LogViewer_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="📋" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="시스템 설정" Click="Menu_SystemSettings_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⚙️" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="하드웨어 연결" Click="Menu_HardwareConnection_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔌" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="진단 도구" Click="Menu_DiagnosticTools_Click">
+                    <MenuItem.Icon>
+                        <TextBlock Text="🔧" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+            </MenuItem>
+
+            <!-- 기존 View 메뉴 -->
+            <MenuItem Header="보기">
+                <MenuItem Header="상태바" IsChecked="True"/>
+                <MenuItem Header="도구모음" IsChecked="True"/>
+                <Separator/>
+                <MenuItem Header="전체화면"/>
+            </MenuItem>
+
+            <!-- 기존 Help 메뉴 -->
+            <MenuItem Header="도움말">
+                <MenuItem Header="사용자 가이드"/>
+                <MenuItem Header="키보드 단축키">
+                    <MenuItem.Icon>
+                        <TextBlock Text="⌨️" FontSize="14"/>
+                    </MenuItem.Icon>
+                </MenuItem>
+                <Separator/>
+                <MenuItem Header="정보" Click="About_Click"/>
+            </MenuItem>
+        </Menu>
+
         <!-- 상단 헤더 영역 -->
-        <Grid Grid.Row="0" Margin="5">
+        <Grid Grid.Row="1" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
+
 
             <Border Grid.Column="0" BorderBrush="Black" BorderThickness="1" Margin="1">
                 <Button Content="Main" Width="80" Height="25" BorderThickness="0" Background="LightGray" />
@@ -58,7 +137,7 @@
         </Grid>
 
         <!-- 메인 버튼 영역 (3x3 그리드) -->
-        <Grid Grid.Row="1" Margin="20">
+        <Grid Grid.Row="2" Margin="20">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="*"/>
@@ -141,7 +220,7 @@
         </Grid>
 
         <!-- 하단 영역 -->
-        <Grid Grid.Row="2" Margin="5">
+        <Grid Grid.Row="3" Margin="5">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
