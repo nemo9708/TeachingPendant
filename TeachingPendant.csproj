@@ -127,9 +127,6 @@
     <Compile Include="Movement\MovementUI\PhysicsTestResultWindow.xaml.cs">
       <DependentUpon>PhysicsTestResultWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="RecipeSystem\Core\ITeachingDataProvider.cs" />
-    <Compile Include="RecipeSystem\Core\RecipeHub.cs" />
-    <Compile Include="RecipeSystem\Core\TeachingDataBridge.cs" />
     <Compile Include="RecipeSystem\Engine\RecipeEngine.cs" />
     <Compile Include="RecipeSystem\Engine\StepExecutor.cs" />
     <Compile Include="RecipeSystem\Models\RecipeEventArgs.cs" />
