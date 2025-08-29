@@ -1,158 +1,208 @@
 ﻿using System;
 
-namespace TeachingPendant.Logging
+namespace TeachingPendant.UI.Views
 {
     /// <summary>
-    /// 개별 로그 엔트리를 나타내는 데이터 클래스
+    /// 로그 항목을 나타내는 모델 클래스
+    /// ErrorLogViewer에서 로그 데이터를 표시하기 위해 사용
     /// </summary>
     public class LogEntry
     {
+        #region Private Fields
+        private DateTime _timeStamp;
+        private string _level;
+        private string _module;
+        private string _method;
+        private string _message;
+        private string _exception;
+        #endregion
+
+        #region Public Properties
         /// <summary>
-        /// 로그 발생 시간 (정확한 밀리초까지)
+        /// 로그 기록 시간
         /// </summary>
-        public DateTime Timestamp { get; set; }
+        public DateTime TimeStamp
+        {
+            get { return _timeStamp; }
+            set { _timeStamp = value; }
+        }
 
         /// <summary>
-        /// 로그 레벨
+        /// 로그 레벨 ERROR, WARNING, INFO, DEBUG
         /// </summary>
-        public LogLevel Level { get; set; }
+        public string Level
+        {
+            get { return _level ?? ""; }
+            set { _level = value; }
+        }
 
         /// <summary>
-        /// 발생한 모듈명 (예: "Teaching", "Movement", "Monitor")
+        /// 모듈명
         /// </summary>
-        public string Module { get; set; }
+        public string Module
+        {
+            get { return _module ?? ""; }
+            set { _module = value; }
+        }
 
         /// <summary>
-        /// 발생한 메서드명 (예: "SaveCurrentData", "ConnectRobot")
+        /// 메서드명
         /// </summary>
-        public string Method { get; set; }
+        public string Method
+        {
+            get { return _method ?? ""; }
+            set { _method = value; }
+        }
 
         /// <summary>
         /// 로그 메시지
         /// </summary>
-        public string Message { get; set; }
+        public string Message
+        {
+            get { return _message ?? ""; }
+            set { _message = value; }
+        }
 
         /// <summary>
-        /// 예외 정보 (오류 로그인 경우)
+        /// 예외 정보
         /// </summary>
-        public Exception Exception { get; set; }
+        public string Exception
+        {
+            get { return _exception ?? ""; }
+            set { _exception = value; }
+        }
 
         /// <summary>
-        /// 현재 스레드 ID
+        /// UI 표시용 시간 문자열
         /// </summary>
-        public int ThreadId { get; set; }
+        public string TimeStampDisplay
+        {
+            get { return _timeStamp.ToString("MM-dd HH:mm:ss"); }
+        }
 
         /// <summary>
-        /// 추가 컨텍스트 정보 (선택사항)
+        /// 로그 레벨 우선순위 정렬용
         /// </summary>
-        public string Context { get; set; }
+        public int LevelPriority
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_level))
+                    return 0;
 
+                var upperLevel = _level.ToUpperInvariant();
+                if (upperLevel == "ERROR")
+                    return 4;
+                if (upperLevel == "WARNING")
+                    return 3;
+                if (upperLevel == "INFO")
+                    return 2;
+                if (upperLevel == "DEBUG")
+                    return 1;
+
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 미리보기용 요약 정보
+        /// </summary>
+        public string Summary
+        {
+            get
+            {
+                var msg = _message;
+                if (!string.IsNullOrEmpty(msg) && msg.Length > 100)
+                {
+                    msg = msg.Substring(0, 100) + "...";
+                }
+                return $"[{_level}] {_module}.{_method}: {msg}";
+            }
+        }
+        #endregion
+
+        #region Constructors
         /// <summary>
         /// 기본 생성자
         /// </summary>
         public LogEntry()
         {
-            Timestamp = DateTime.Now;
-            ThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            _timeStamp = DateTime.Now;
+            _level = "";
+            _module = "";
+            _method = "";
+            _message = "";
+            _exception = "";
         }
 
         /// <summary>
-        /// 편의 생성자
+        /// 매개변수 생성자
         /// </summary>
-        public LogEntry(LogLevel level, string module, string method, string message, Exception exception = null)
-            : this()
+        /// <param name="timeStamp">로그 시간</param>
+        /// <param name="level">로그 레벨</param>
+        /// <param name="module">모듈명</param>
+        /// <param name="method">메서드명</param>
+        /// <param name="message">메시지</param>
+        /// <param name="exception">예외 정보</param>
+        public LogEntry(DateTime timeStamp, string level, string module, string method, string message, string exception = null)
         {
-            Level = level;
-            Module = module ?? "Unknown";
-            Method = method ?? "Unknown";
-            Message = message ?? "";
-            Exception = exception;
+            _timeStamp = timeStamp;
+            _level = level ?? "";
+            _module = module ?? "";
+            _method = method ?? "";
+            _message = message ?? "";
+            _exception = exception ?? "";
         }
+        #endregion
 
+        #region Public Methods
         /// <summary>
-        /// 표준 로그 포맷으로 문자열 변환
-        /// [2025-06-19 16:30:45.123] [INFO] [Teaching] [SaveCurrentData] Position saved: Group1-Cassette1 Slot=15
+        /// 문자열 표현
         /// </summary>
+        /// <returns>로그 항목의 문자열 표현</returns>
         public override string ToString()
         {
-            var timestampStr = Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var levelStr = Level.ToShortString();
-            var moduleStr = (Module ?? "Unknown").PadRight(12);
-            var methodStr = (Method ?? "Unknown").PadRight(20);
-            
-            var baseLog = $"[{timestampStr}] [{levelStr}] [{moduleStr}] [{methodStr}] {Message}";
-
-            // 예외 정보가 있으면 추가
-            if (Exception != null)
+            var result = $"[{_timeStamp:yyyy-MM-dd HH:mm:ss}] [{_level}] [{_module}] [{_method}] {_message}";
+            if (!string.IsNullOrEmpty(_exception))
             {
-                baseLog += $"\n    Exception: {Exception.GetType().Name}: {Exception.Message}";
-                
-                // 중요한 예외의 경우 스택 트레이스도 포함
-                if (Level >= LogLevel.Error)
-                {
-                    baseLog += $"\n    StackTrace: {Exception.StackTrace}";
-                }
+                result += $" [Exception: {_exception}]";
             }
-
-            // 컨텍스트 정보가 있으면 추가
-            if (!string.IsNullOrEmpty(Context))
-            {
-                baseLog += $"\n    Context: {Context}";
-            }
-
-            return baseLog;
+            return result;
         }
 
         /// <summary>
-        /// UI 표시용 간단한 포맷
-        /// 16:30:45 [INFO] Teaching: Position saved
+        /// 두 LogEntry 객체가 동일한지 비교
         /// </summary>
-        public string ToUIString()
+        /// <param name="obj">비교 대상 객체</param>
+        /// <returns>동일 여부</returns>
+        public override bool Equals(object obj)
         {
-            var timeStr = Timestamp.ToString("HH:mm:ss");
-            var levelStr = Level.ToShortString().Trim();
-            
-            return $"{timeStr} [{levelStr}] {Module}: {Message}";
+            if (obj == null || GetType() != obj.GetType())
+                return false;
+
+            var other = (LogEntry)obj;
+            return _timeStamp == other._timeStamp &&
+                   _level == other._level &&
+                   _module == other._module &&
+                   _method == other._method &&
+                   _message == other._message;
         }
 
         /// <summary>
-        /// CSV 형태로 변환 (로그 내보내기용)
+        /// 해시코드 생성
         /// </summary>
-        public string ToCsvString()
+        /// <returns>해시코드</returns>
+        public override int GetHashCode()
         {
-            var timestamp = Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var level = Level.ToString();
-            var module = EscapeCsv(Module ?? "");
-            var method = EscapeCsv(Method ?? "");
-            var message = EscapeCsv(Message ?? "");
-            var exceptionInfo = Exception != null ? EscapeCsv(Exception.Message) : "";
-            
-            return $"{timestamp},{level},{module},{method},{message},{exceptionInfo},{ThreadId}";
+            // C# 6.0 호환 해시코드 생성
+            int hash = 17;
+            hash = hash * 31 + _timeStamp.GetHashCode();
+            hash = hash * 31 + (_level?.GetHashCode() ?? 0);
+            hash = hash * 31 + (_module?.GetHashCode() ?? 0);
+            hash = hash * 31 + (_method?.GetHashCode() ?? 0);
+            hash = hash * 31 + (_message?.GetHashCode() ?? 0);
+            return hash;
         }
-
-        /// <summary>
-        /// CSV용 문자열 이스케이프
-        /// </summary>
-        private string EscapeCsv(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return "";
-
-            // 콤마, 따옴표, 줄바꿈이 있으면 따옴표로 감싸고 내부 따옴표는 두 개로 변경
-            if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
-            {
-                return "\"" + value.Replace("\"", "\"\"") + "\"";
-            }
-
-            return value;
-        }
-
-        /// <summary>
-        /// CSV 헤더 반환
-        /// </summary>
-        public static string GetCsvHeader()
-        {
-            return "Timestamp,Level,Module,Method,Message,Exception,ThreadId";
-        }
+        #endregion
     }
 }
