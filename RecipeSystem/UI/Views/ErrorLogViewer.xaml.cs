@@ -107,26 +107,38 @@ namespace TeachingPendant.UI.Views
 
         /// <summary>
         /// 현재 로그 파일 경로 가져오기
-        /// FileLogWriter를 통해 실제 로그 파일 경로 확인
+        /// FileLogWriter의 실제 로그 파일 경로 사용
         /// </summary>
         private string GetCurrentLogFilePath()
         {
             try
             {
-                // 로그 디렉터리는 Logger 시스템에서 제공
-                var logDirectory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "TeachingPendant",
-                    "Logs"
-                );
+                // Logger가 초기화되어 있다면 실제 파일 경로 사용
+                if (Logger.IsInitialized)
+                {
+                    var logDirectory = Logger.GetLogDirectory();
+                    var today = DateTime.Now.ToString("yyyyMMdd");
+                    var logFileName = $"TeachingPendant_{today}.log";
+                    var fullPath = Path.Combine(logDirectory, logFileName);
 
-                // 현재 날짜 기반 로그 파일명
-                var today = DateTime.Now.ToString("yyyy-MM-dd");
-                var logFileName = $"TeachingPendant_{today}.log";
-                var fullPath = Path.Combine(logDirectory, logFileName);
+                    Logger.LogDebug(CLASS_NAME, "GetCurrentLogFilePath", $"로그 파일 경로: {fullPath}");
+                    return fullPath;
+                }
+                else
+                {
+                    // Logger가 초기화되지 않은 경우 기본 경로 사용
+                    var logDirectory = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "TeachingPendantData",
+                        "Logs"
+                    );
 
-                Logger.LogDebug(CLASS_NAME, "GetCurrentLogFilePath", $"로그 파일 경로: {fullPath}");
-                return fullPath;
+                    var today = DateTime.Now.ToString("yyyyMMdd");
+                    var logFileName = $"TeachingPendant_{today}.log";
+                    var fullPath = Path.Combine(logDirectory, logFileName);
+
+                    return fullPath;
+                }
             }
             catch (Exception ex)
             {
@@ -232,7 +244,7 @@ namespace TeachingPendant.UI.Views
         }
 
         /// <summary>
-        /// 로그 엔트리 로드
+        /// 로그 엔트리 로드 (성능 최적화)
         /// </summary>
         private async Task LoadLogEntries()
         {
@@ -252,19 +264,49 @@ namespace TeachingPendant.UI.Views
                     return;
                 }
 
-                // 파일 크기 체크 (큰 파일 처리)
+                // 파일 크기 체크 및 성능 최적화
                 var fileInfo = new FileInfo(_currentLogFilePath);
-                var maxLines = fileInfo.Length > 50 * 1024 * 1024 ? 10000 : -1; // 50MB 이상이면 최근 10000줄만
+                var fileSizeMB = fileInfo.Length / (1024.0 * 1024.0);
+
+                int maxLines;
+                if (fileSizeMB > 100) // 100MB 이상
+                {
+                    maxLines = 5000; // 최근 5000줄만
+                    txtLogStatus.Text = $"대용량 파일 ({fileSizeMB:F1}MB) - 최근 {maxLines}줄만 로드";
+                }
+                else if (fileSizeMB > 50) // 50MB 이상
+                {
+                    maxLines = 10000; // 최근 10000줄만
+                    txtLogStatus.Text = $"큰 파일 ({fileSizeMB:F1}MB) - 최근 {maxLines}줄만 로드";
+                }
+                else
+                {
+                    maxLines = -1; // 전체 로드
+                    txtLogStatus.Text = $"파일 크기 {fileSizeMB:F1}MB - 전체 로드 중...";
+                }
 
                 var lines = await ReadLogFileAsync(_currentLogFilePath, maxLines);
                 var logEntries = new List<LogEntry>();
 
-                foreach (var line in lines)
+                // 청크 단위로 파싱 (메모리 효율성)
+                const int chunkSize = 1000;
+                for (int i = 0; i < lines.Count; i += chunkSize)
                 {
-                    var entry = ParseLogLine(line);
-                    if (entry != null)
+                    var chunk = lines.Skip(i).Take(chunkSize);
+                    foreach (var line in chunk)
                     {
-                        logEntries.Add(entry);
+                        var entry = ParseLogLine(line);
+                        if (entry != null)
+                        {
+                            logEntries.Add(entry);
+                        }
+                    }
+
+                    // UI 반응성을 위한 양보
+                    if (i % (chunkSize * 5) == 0) // 5000줄마다
+                    {
+                        await Task.Delay(1); // UI 스레드에 양보
+                        txtLogStatus.Text = $"파싱 진행 중... ({i + chunkSize}/{lines.Count})";
                     }
                 }
 
@@ -286,7 +328,7 @@ namespace TeachingPendant.UI.Views
                 });
 
                 _lastLogFileCheck = DateTime.Now;
-                txtLogStatus.Text = $"로그 로드 완료 ({logEntries.Count}개 항목)";
+                txtLogStatus.Text = $"로드 완료 ({logEntries.Count}개) - 파일크기: {fileSizeMB:F1}MB";
             }
             catch (Exception ex)
             {
@@ -298,7 +340,7 @@ namespace TeachingPendant.UI.Views
         /// <summary>
         /// 로그 라인 파싱
         /// 실제 Logger 시스템의 로그 형식에 맞춰 파싱
-        /// 형식: [2025-08-29 14:30:25] [INFO] [ModuleName] [MethodName] Message
+        /// 형식: [2025-06-19 16:30:45.123] [INFO] [Teaching] [SaveCurrentData] Position saved: Group1-Cassette1 Slot=15
         /// </summary>
         private LogEntry ParseLogLine(string logLine)
         {
@@ -306,11 +348,11 @@ namespace TeachingPendant.UI.Views
             {
                 if (string.IsNullOrWhiteSpace(logLine)) return null;
 
-                // 정규식 대신 문자열 분할 사용 (C# 6.0 호환)
+                // 실제 로그 형식: [timestamp] [level] [module] [method] message
                 var parts = logLine.Split(new[] { "] [" }, StringSplitOptions.None);
                 if (parts.Length < 4) return null;
 
-                // 시간 파싱 ([2025-08-29 14:30:25] 형태)
+                // 시간 파싱 ([2025-06-19 16:30:45.123] 형태)
                 var timeStr = parts[0].TrimStart('[');
                 DateTime timeStamp;
                 if (!DateTime.TryParse(timeStr, out timeStamp))
@@ -318,33 +360,38 @@ namespace TeachingPendant.UI.Views
                     timeStamp = DateTime.Now;
                 }
 
-                // 레벨, 모듈, 메서드 파싱
-                var level = parts[1];
-                var module = parts[2];
-                var methodPart = parts[3];
+                // 레벨 파싱
+                var level = parts[1].Trim();
+
+                // 모듈 파싱 (패딩 제거)
+                var module = parts[2].Trim();
+
+                // 메서드와 메시지 분리
+                var methodAndMessage = parts[3];
+                var methodEnd = methodAndMessage.IndexOf("] ");
 
                 string method = "";
                 string message = "";
                 string exception = "";
 
-                // 메서드와 메시지 분리
-                var methodEnd = methodPart.IndexOf("] ");
                 if (methodEnd > 0)
                 {
-                    method = methodPart.Substring(0, methodEnd);
-                    var remaining = methodPart.Substring(methodEnd + 2);
+                    // 메서드명 추출 (패딩 제거)
+                    method = methodAndMessage.Substring(0, methodEnd).Trim();
+                    message = methodAndMessage.Substring(methodEnd + 2);
 
-                    // 예외 정보와 메시지 분리
-                    var exceptionStart = remaining.IndexOf(" [Exception:");
-                    if (exceptionStart > 0)
+                    // 예외 정보 분리 (예외가 있는 경우)
+                    if (message.Contains("Exception:"))
                     {
-                        message = remaining.Substring(0, exceptionStart);
-                        exception = remaining.Substring(exceptionStart + 12).TrimEnd(']');
+                        var exceptionIndex = message.IndexOf("Exception:");
+                        exception = message.Substring(exceptionIndex);
+                        message = message.Substring(0, exceptionIndex).Trim();
                     }
-                    else
-                    {
-                        message = remaining;
-                    }
+                }
+                else
+                {
+                    // 메서드 끝 구분자가 없는 경우 전체를 메시지로 처리
+                    message = methodAndMessage.TrimEnd(']');
                 }
 
                 return new LogEntry(timeStamp, level, module, method, message, exception);
@@ -485,13 +532,12 @@ namespace TeachingPendant.UI.Views
                             (e.Exception != null && e.Exception.ToLowerInvariant().Contains(searchLower)));
                     }
 
-                    // 날짜 필터는 현재 XAML에 없으므로 주석 처리
-                    // 필요시 XAML에 체크박스를 추가한 후 활성화
-                    // if (chkOnlyToday?.IsChecked == true)
-                    // {
-                    //     var today = DateTime.Now.Date;
-                    //     filtered = filtered.Where(e => e.TimeStamp.Date == today);
-                    // }
+                    // 날짜 필터 (오늘만 보기)
+                    if (chkOnlyToday?.IsChecked == true)
+                    {
+                        var today = DateTime.Now.Date;
+                        filtered = filtered.Where(e => e.TimeStamp.Date == today);
+                    }
 
                     foreach (var entry in filtered)
                     {
@@ -555,6 +601,30 @@ namespace TeachingPendant.UI.Views
         {
             _currentSearchText = txtSearch?.Text ?? "";
             ApplyFilters();
+        }
+
+        /// <summary>
+        /// 오늘만 보기 체크박스 변경
+        /// </summary>
+        private void chkOnlyToday_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            ApplyFilters();
+        }
+
+        /// <summary>
+        /// 실시간 업데이트 체크박스 변경
+        /// </summary>
+        private void chkRealTime_CheckedChanged(object sender, RoutedEventArgs e)
+        {
+            _isRealTimeEnabled = chkRealTime?.IsChecked ?? true;
+            if (_isRealTimeEnabled)
+            {
+                StartRealTimeUpdate();
+            }
+            else
+            {
+                _realTimeUpdateTimer?.Stop();
+            }
         }
 
         /// <summary>
