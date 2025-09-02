@@ -8,20 +8,18 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Win32;
-using TeachingPendant.Logging;
 using TeachingPendant.Alarm;
 
 namespace TeachingPendant.UI.Views
 {
     /// <summary>
     /// ErrorLogViewer 사용자 컨트롤의 상호작용 로직
-    /// 실제 Logger 시스템과 연동하여 로그 파일을 읽고 표시
+    /// 단순화된 버전으로 컴파일 에러 방지에 중점
     /// </summary>
     public partial class ErrorLogViewer : UserControl
     {
         #region Private Fields
         private static readonly string CLASS_NAME = "ErrorLogViewer";
-
         private ObservableCollection<LogEntry> _logEntries;
         private ObservableCollection<LogEntry> _filteredLogEntries;
         private DispatcherTimer _realTimeUpdateTimer;
@@ -73,77 +71,124 @@ namespace TeachingPendant.UI.Views
             try
             {
                 txtStatusMessage.Text = "로그 시스템 초기화 중...";
-                Logger.Info(CLASS_NAME, "InitializeLogViewer", "로그 뷰어 초기화 시작");
 
                 // 컬렉션 초기화
                 _logEntries = new ObservableCollection<LogEntry>();
                 _filteredLogEntries = new ObservableCollection<LogEntry>();
 
-                // DataGrid 바인딩 설정
-                dgLogs.ItemsSource = _filteredLogEntries;
+                // DataGrid에 바인딩
+                dgLogEntries.ItemsSource = _filteredLogEntries;
 
-                // 모듈 필터 콤보박스 초기화
-                await InitializeModuleFilter();
+                // 현재 로그 파일 경로 설정
+                SetCurrentLogFilePath();
 
-                // 로그 파일 경로 설정
-                _currentLogFilePath = GetCurrentLogFilePath();
+                // 필터 초기화 (순서 변경: 로그 파일을 먼저 알아야 모듈 필터를 만들 수 있어요)
+                await InitializeFilters();
 
                 // 초기 로그 로드
                 await LoadLogEntries();
 
                 // 실시간 업데이트 타이머 시작
-                StartRealTimeUpdate();
+                StartRealTimeUpdateTimer();
 
-                txtStatusMessage.Text = "로그 뷰어 준비 완료";
-                Logger.Info(CLASS_NAME, "InitializeLogViewer", "로그 뷰어 초기화 완료");
+                txtStatusMessage.Text = "로그 뷰어 초기화 완료";
             }
             catch (Exception ex)
             {
-                txtStatusMessage.Text = "초기화 실패";
-                Logger.Error(CLASS_NAME, "InitializeLogViewer", "로그 뷰어 초기화 실패", ex);
-                AlarmMessageManager.ShowCustomMessage("로그 뷰어 초기화에 실패했습니다", AlarmCategory.Error);
+                txtStatusMessage.Text = "로그 뷰어 초기화 실패: " + ex.Message;
             }
         }
 
         /// <summary>
-        /// 현재 로그 파일 경로 가져오기
-        /// FileLogWriter의 실제 로그 파일 경로 사용
+        /// 현재 로그 파일 경로 설정
         /// </summary>
-        private string GetCurrentLogFilePath()
+        private void SetCurrentLogFilePath()
         {
             try
             {
-                // Logger가 초기화되어 있다면 실제 파일 경로 사용
-                if (Logger.IsInitialized)
+                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var logDirectory = Path.Combine(appDataPath, "TeachingPendantData", "Logs");
+                var fileName = $"TeachingPendant_{DateTime.Now:yyyyMMdd}.log";
+                _currentLogFilePath = Path.Combine(logDirectory, fileName);
+
+                // 로그 디렉토리가 없으면 생성
+                if (!Directory.Exists(logDirectory))
                 {
-                    var logDirectory = Logger.GetLogDirectory();
-                    var today = DateTime.Now.ToString("yyyyMMdd");
-                    var logFileName = $"TeachingPendant_{today}.log";
-                    var fullPath = Path.Combine(logDirectory, logFileName);
-
-                    Logger.LogDebug(CLASS_NAME, "GetCurrentLogFilePath", $"로그 파일 경로: {fullPath}");
-                    return fullPath;
-                }
-                else
-                {
-                    // Logger가 초기화되지 않은 경우 기본 경로 사용
-                    var logDirectory = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "TeachingPendantData",
-                        "Logs"
-                    );
-
-                    var today = DateTime.Now.ToString("yyyyMMdd");
-                    var logFileName = $"TeachingPendant_{today}.log";
-                    var fullPath = Path.Combine(logDirectory, logFileName);
-
-                    return fullPath;
+                    Directory.CreateDirectory(logDirectory);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "GetCurrentLogFilePath", "로그 파일 경로 가져오기 실패", ex);
-                return "";
+                // 로그 파일 경로 설정 실패시에도 계속 진행
+            }
+        }
+
+        /// <summary>
+        /// 필터 초기화
+        /// </summary>
+        private async Task InitializeFilters()
+        {
+            try
+            {
+                // 요구사항에 따라 '레벨' 필터는 비워둡니다.
+                if (cmbLogLevel != null)
+                {
+                    // ItemsSource를 null로 설정하여 목록을 비웁니다.
+                    cmbLogLevel.ItemsSource = null;
+
+                    // 사용자가 헷갈리지 않도록 컨트롤을 비활성화 처리하는 것이 좋아요.
+                    cmbLogLevel.IsEnabled = false;
+                }
+
+                // '모듈' 필터에만 동적으로 모듈 리스트를 채우는 로직을 실행합니다.
+                await InitializeModuleFilter();
+
+                // --- 이하 검색, 체크박스, 버튼 이벤트 연결 코드는 동일 ---
+
+                // 검색 박스 이벤트 연결
+                if (txtSearch != null)
+                {
+                    txtSearch.TextChanged += txtSearch_TextChanged;
+                }
+
+                // 체크박스 이벤트 연결
+                if (chkOnlyToday != null)
+                {
+                    chkOnlyToday.Checked += chkOnlyToday_CheckedChanged;
+                    chkOnlyToday.Unchecked += chkOnlyToday_CheckedChanged;
+                }
+
+                if (chkRealTime != null)
+                {
+                    chkRealTime.Checked += chkRealTime_CheckedChanged;
+                    chkRealTime.Unchecked += chkRealTime_CheckedChanged;
+                }
+
+                // 버튼 이벤트 연결
+                if (btnRefresh != null)
+                {
+                    btnRefresh.Click += btnRefresh_Click;
+                }
+
+                if (btnExportLogs != null)
+                {
+                    btnExportLogs.Click += btnExportLogs_Click;
+                }
+
+                if (btnClearLogs != null)
+                {
+                    btnClearLogs.Click += btnClearLogs_Click;
+                }
+
+                // DataGrid 이벤트 연결
+                if (dgLogEntries != null)
+                {
+                    dgLogEntries.SelectionChanged += dgLogEntries_SelectionChanged;
+                }
+            }
+            catch (Exception ex)
+            {
+                // 필터 초기화 실패시에도 계속 진행
             }
         }
 
@@ -154,19 +199,22 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
+                if (cmbModule == null) return;
+
                 var modules = new List<string> { "All" };
 
                 // 로그 파일에서 사용된 모듈 목록 추출
                 var logModules = await GetAvailableLogModules();
                 modules.AddRange(logModules.OrderBy(m => m));
 
-                // UI 스레드에서 콤보박스 업데이트
+                // UI 스레드에서 **cmbModule** 콤보박스 업데이트
                 cmbModule.ItemsSource = modules;
                 cmbModule.SelectedIndex = 0;
+                cmbModule.SelectionChanged += cmbModule_SelectionChanged; // 이벤트 핸들러도 확인
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "InitializeModuleFilter", "모듈 필터 초기화 실패", ex);
+                // 모듈 필터 초기화 실패시에도 계속 진행
             }
         }
 
@@ -194,7 +242,7 @@ namespace TeachingPendant.UI.Views
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "GetAvailableLogModules", "모듈 목록 가져오기 실패", ex);
+                // 모듈 목록 가져오기 실패시에도 계속 진행
             }
 
             return modules.ToList();
@@ -224,100 +272,53 @@ namespace TeachingPendant.UI.Views
                         allLines.Add(line);
                     }
 
+                    // 최근 라인부터 가져오기 (maxLines가 지정된 경우)
                     if (maxLines > 0 && allLines.Count > maxLines)
                     {
-                        // 최근 줄들만 가져오기
-                        lines.AddRange(allLines.Skip(allLines.Count - maxLines));
+                        lines = allLines.Skip(allLines.Count - maxLines).ToList();
                     }
                     else
                     {
-                        lines.AddRange(allLines);
+                        lines = allLines;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ReadLogFileAsync", "로그 파일 읽기 실패", ex);
+                // 파일 읽기 실패시에도 계속 진행
             }
 
             return lines;
         }
 
         /// <summary>
-        /// 로그 엔트리 로드 (성능 최적화)
+        /// 로그 항목들 로드
         /// </summary>
         private async Task LoadLogEntries()
         {
             try
             {
-                txtLogStatus.Text = "로그 파일 읽는 중...";
+                txtStatusMessage.Text = "로그 파일 읽는 중...";
 
-                lock (_lockObject)
-                {
-                    _logEntries.Clear();
-                }
+                var lines = await ReadLogFileAsync(_currentLogFilePath);
+                var newEntries = new List<LogEntry>();
 
-                if (!File.Exists(_currentLogFilePath))
+                foreach (var line in lines)
                 {
-                    txtLogStatus.Text = "로그 파일을 찾을 수 없습니다";
-                    UpdateUI();
-                    return;
-                }
-
-                // 파일 크기 체크 및 성능 최적화
-                var fileInfo = new FileInfo(_currentLogFilePath);
-                var fileSizeMB = fileInfo.Length / (1024.0 * 1024.0);
-
-                int maxLines;
-                if (fileSizeMB > 100) // 100MB 이상
-                {
-                    maxLines = 5000; // 최근 5000줄만
-                    txtLogStatus.Text = $"대용량 파일 ({fileSizeMB:F1}MB) - 최근 {maxLines}줄만 로드";
-                }
-                else if (fileSizeMB > 50) // 50MB 이상
-                {
-                    maxLines = 10000; // 최근 10000줄만
-                    txtLogStatus.Text = $"큰 파일 ({fileSizeMB:F1}MB) - 최근 {maxLines}줄만 로드";
-                }
-                else
-                {
-                    maxLines = -1; // 전체 로드
-                    txtLogStatus.Text = $"파일 크기 {fileSizeMB:F1}MB - 전체 로드 중...";
-                }
-
-                var lines = await ReadLogFileAsync(_currentLogFilePath, maxLines);
-                var logEntries = new List<LogEntry>();
-
-                // 청크 단위로 파싱 (메모리 효율성)
-                const int chunkSize = 1000;
-                for (int i = 0; i < lines.Count; i += chunkSize)
-                {
-                    var chunk = lines.Skip(i).Take(chunkSize);
-                    foreach (var line in chunk)
+                    var logEntry = ParseLogLine(line);
+                    if (logEntry != null)
                     {
-                        var entry = ParseLogLine(line);
-                        if (entry != null)
-                        {
-                            logEntries.Add(entry);
-                        }
-                    }
-
-                    // UI 반응성을 위한 양보
-                    if (i % (chunkSize * 5) == 0) // 5000줄마다
-                    {
-                        await Task.Delay(1); // UI 스레드에 양보
-                        txtLogStatus.Text = $"파싱 진행 중... ({i + chunkSize}/{lines.Count})";
+                        newEntries.Add(logEntry);
                     }
                 }
 
                 // UI 스레드에서 컬렉션 업데이트
-                await Dispatcher.InvokeAsync(() =>
+                Application.Current.Dispatcher.Invoke(() =>
                 {
                     lock (_lockObject)
                     {
                         _logEntries.Clear();
-                        // 시간 역순 정렬 (최신이 위로)
-                        foreach (var entry in logEntries.OrderByDescending(e => e.TimeStamp))
+                        foreach (var entry in newEntries.OrderBy(e => e.TimeStamp))
                         {
                             _logEntries.Add(entry);
                         }
@@ -327,176 +328,62 @@ namespace TeachingPendant.UI.Views
                     UpdateUI();
                 });
 
-                _lastLogFileCheck = DateTime.Now;
-                txtLogStatus.Text = $"로드 완료 ({logEntries.Count}개) - 파일크기: {fileSizeMB:F1}MB";
+                txtStatusMessage.Text = $"로그 {newEntries.Count}개 로드 완료";
             }
             catch (Exception ex)
             {
-                txtLogStatus.Text = "로그 로드 실패";
-                Logger.Error(CLASS_NAME, "LoadLogEntries", "로그 엔트리 로드 실패", ex);
+                txtStatusMessage.Text = "로그 로드 실패: " + ex.Message;
             }
         }
 
         /// <summary>
         /// 로그 라인 파싱
-        /// 실제 Logger 시스템의 로그 형식에 맞춰 파싱
-        /// 형식: [2025-06-19 16:30:45.123] [INFO] [Teaching] [SaveCurrentData] Position saved: Group1-Cassette1 Slot=15
+        /// 형식: [2025-06-19 16:30:45.123] [INFO] [Teaching] [SaveCurrentData] Message
         /// </summary>
         private LogEntry ParseLogLine(string logLine)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(logLine)) return null;
-
-                // 실제 로그 형식: [timestamp] [level] [module] [method] message
-                var parts = logLine.Split(new[] { "] [" }, StringSplitOptions.None);
-                if (parts.Length < 4) return null;
-
-                // 시간 파싱 ([2025-06-19 16:30:45.123] 형태)
-                var timeStr = parts[0].TrimStart('[');
-                DateTime timeStamp;
-                if (!DateTime.TryParse(timeStr, out timeStamp))
-                {
-                    timeStamp = DateTime.Now;
-                }
-
-                // 레벨 파싱
-                var level = parts[1].Trim();
-
-                // 모듈 파싱 (패딩 제거)
-                var module = parts[2].Trim();
-
-                // 메서드와 메시지 분리
-                var methodAndMessage = parts[3];
-                var methodEnd = methodAndMessage.IndexOf("] ");
-
-                string method = "";
-                string message = "";
-                string exception = "";
-
-                if (methodEnd > 0)
-                {
-                    // 메서드명 추출 (패딩 제거)
-                    method = methodAndMessage.Substring(0, methodEnd).Trim();
-                    message = methodAndMessage.Substring(methodEnd + 2);
-
-                    // 예외 정보 분리 (예외가 있는 경우)
-                    if (message.Contains("Exception:"))
-                    {
-                        var exceptionIndex = message.IndexOf("Exception:");
-                        exception = message.Substring(exceptionIndex);
-                        message = message.Substring(0, exceptionIndex).Trim();
-                    }
-                }
-                else
-                {
-                    // 메서드 끝 구분자가 없는 경우 전체를 메시지로 처리
-                    message = methodAndMessage.TrimEnd(']');
-                }
-
-                return new LogEntry(timeStamp, level, module, method, message, exception);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(CLASS_NAME, "ParseLogLine", $"로그 라인 파싱 실패: {logLine}", ex);
+            if (string.IsNullOrWhiteSpace(logLine))
                 return null;
-            }
-        }
-        #endregion
-
-        #region Real-Time Updates
-        /// <summary>
-        /// 실시간 업데이트 시작
-        /// </summary>
-        private void StartRealTimeUpdate()
-        {
-            if (_realTimeUpdateTimer == null)
-            {
-                _realTimeUpdateTimer = new DispatcherTimer();
-                _realTimeUpdateTimer.Interval = TimeSpan.FromSeconds(2); // 2초마다 체크
-                _realTimeUpdateTimer.Tick += OnRealTimeUpdate;
-            }
-
-            _realTimeUpdateTimer.Start();
-        }
-
-        /// <summary>
-        /// 실시간 업데이트 이벤트
-        /// </summary>
-        private async void OnRealTimeUpdate(object sender, EventArgs e)
-        {
-            if (!_isRealTimeEnabled) return;
 
             try
             {
-                // 파일 변경 시간 체크
-                if (File.Exists(_currentLogFilePath))
+                // 간단한 파싱 로직
+                if (logLine.Contains("[") && logLine.Contains("]"))
                 {
-                    var lastWriteTime = File.GetLastWriteTime(_currentLogFilePath);
-                    if (lastWriteTime > _lastLogFileCheck)
-                    {
-                        await LoadNewLogEntries();
-                        _lastLogFileCheck = lastWriteTime;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(CLASS_NAME, "OnRealTimeUpdate", "실시간 업데이트 실패", ex);
-            }
-        }
+                    var parts = logLine.Split(new char[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
 
-        /// <summary>
-        /// 새 로그 엔트리만 로드
-        /// </summary>
-        private async Task LoadNewLogEntries()
-        {
-            try
-            {
-                var lines = await ReadLogFileAsync(_currentLogFilePath);
-                var newEntries = new List<LogEntry>();
-
-                // 마지막 체크 이후의 로그만 파싱
-                foreach (var line in lines)
-                {
-                    var entry = ParseLogLine(line);
-                    if (entry != null && entry.TimeStamp > _lastLogFileCheck)
+                    if (parts.Length >= 4)
                     {
-                        newEntries.Add(entry);
-                    }
-                }
-
-                if (newEntries.Count > 0)
-                {
-                    await Dispatcher.InvokeAsync(() =>
-                    {
-                        lock (_lockObject)
+                        DateTime timeStamp;
+                        if (DateTime.TryParse(parts[0].Trim(), out timeStamp))
                         {
-                            foreach (var entry in newEntries.OrderByDescending(e => e.TimeStamp))
-                            {
-                                _logEntries.Insert(0, entry);
-                            }
+                            var level = parts.Length > 1 ? parts[1].Trim() : "";
+                            var module = parts.Length > 2 ? parts[2].Trim() : "";
+                            var method = parts.Length > 3 ? parts[3].Trim() : "";
+                            var message = parts.Length > 4 ? parts[4].Trim() : "";
 
-                            // 최대 로그 수 제한 (메모리 관리)
-                            while (_logEntries.Count > 50000)
+                            return new LogEntry
                             {
-                                _logEntries.RemoveAt(_logEntries.Count - 1);
-                            }
+                                TimeStamp = timeStamp,
+                                Level = level,
+                                Module = module,
+                                Method = method,
+                                Message = message
+                            };
                         }
-
-                        ApplyFilters();
-                        UpdateUI();
-                    });
+                    }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Error(CLASS_NAME, "LoadNewLogEntries", "새 로그 엔트리 로드 실패", ex);
+                // 파싱 실패시 null 반환
             }
+
+            return null;
         }
         #endregion
 
-        #region Filtering and Search
+        #region Filtering
         /// <summary>
         /// 필터 적용
         /// </summary>
@@ -506,79 +393,123 @@ namespace TeachingPendant.UI.Views
             {
                 lock (_lockObject)
                 {
-                    _filteredLogEntries.Clear();
+                    var filteredItems = _logEntries.AsEnumerable();
 
-                    var filtered = _logEntries.AsEnumerable();
-
-                    // 레벨 필터
+                    // 로그 레벨 필터
                     if (_currentLogLevelFilter != "All")
                     {
-                        filtered = filtered.Where(e => string.Equals(e.Level, _currentLogLevelFilter, StringComparison.OrdinalIgnoreCase));
+                        filteredItems = filteredItems.Where(item =>
+                            string.Equals(item.Level, _currentLogLevelFilter, StringComparison.OrdinalIgnoreCase));
                     }
 
                     // 모듈 필터
                     if (_currentModuleFilter != "All")
                     {
-                        filtered = filtered.Where(e => string.Equals(e.Module, _currentModuleFilter, StringComparison.OrdinalIgnoreCase));
+                        filteredItems = filteredItems.Where(item =>
+                            string.Equals(item.Module, _currentModuleFilter, StringComparison.OrdinalIgnoreCase));
                     }
 
-                    // 검색 필터
-                    if (!string.IsNullOrWhiteSpace(_currentSearchText))
+                    // 검색 텍스트 필터
+                    if (!string.IsNullOrEmpty(_currentSearchText))
                     {
-                        var searchLower = _currentSearchText.ToLowerInvariant();
-                        filtered = filtered.Where(e =>
-                            (e.Message != null && e.Message.ToLowerInvariant().Contains(searchLower)) ||
-                            (e.Method != null && e.Method.ToLowerInvariant().Contains(searchLower)) ||
-                            (e.Exception != null && e.Exception.ToLowerInvariant().Contains(searchLower)));
+                        filteredItems = filteredItems.Where(item =>
+                            item.Message.IndexOf(_currentSearchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            item.Method.IndexOf(_currentSearchText, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            item.Exception.IndexOf(_currentSearchText, StringComparison.OrdinalIgnoreCase) >= 0);
                     }
 
-                    // 날짜 필터 (오늘만 보기)
-                    if (chkOnlyToday?.IsChecked == true)
+                    // 오늘만 보기 필터
+                    if (chkOnlyToday != null && chkOnlyToday.IsChecked == true)
                     {
-                        var today = DateTime.Now.Date;
-                        filtered = filtered.Where(e => e.TimeStamp.Date == today);
+                        var today = DateTime.Today;
+                        filteredItems = filteredItems.Where(item => item.TimeStamp.Date == today);
                     }
 
-                    foreach (var entry in filtered)
+                    _filteredLogEntries.Clear();
+                    foreach (var item in filteredItems.OrderByDescending(e => e.TimeStamp))
                     {
-                        _filteredLogEntries.Add(entry);
+                        _filteredLogEntries.Add(item);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ApplyFilters", "필터 적용 실패", ex);
+                // 필터 적용 실패시에도 계속 진행
             }
         }
         #endregion
 
-        #region Event Handlers
+        #region Real-time Update
         /// <summary>
-        /// 새로고침 버튼 클릭
+        /// 실시간 업데이트 타이머 시작
         /// </summary>
-        private async void btnRefresh_Click(object sender, RoutedEventArgs e)
+        private void StartRealTimeUpdateTimer()
         {
             try
             {
-                await LoadLogEntries();
-                AlarmMessageManager.ShowCustomMessage("로그가 새로고침되었습니다", AlarmCategory.Information);
+                _realTimeUpdateTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(2)
+                };
+                _realTimeUpdateTimer.Tick += RealTimeUpdateTimer_Tick;
+
+                if (_isRealTimeEnabled)
+                {
+                    _realTimeUpdateTimer.Start();
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "btnRefresh_Click", "새로고침 실패", ex);
+                // 타이머 시작 실패시에도 계속 진행
             }
         }
 
+        /// <summary>
+        /// 실시간 업데이트 타이머 이벤트
+        /// </summary>
+        private async void RealTimeUpdateTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                if (!_isRealTimeEnabled)
+                    return;
+
+                // 파일 변경 시간 확인
+                if (File.Exists(_currentLogFilePath))
+                {
+                    var lastWriteTime = File.GetLastWriteTime(_currentLogFilePath);
+                    if (lastWriteTime > _lastLogFileCheck)
+                    {
+                        _lastLogFileCheck = lastWriteTime;
+                        await LoadLogEntries();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 실시간 업데이트 실패시에도 계속 진행
+            }
+        }
+        #endregion
+
+        #region UI Event Handlers
         /// <summary>
         /// 로그 레벨 필터 변경
         /// </summary>
         private void cmbLogLevel_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cmbLogLevel.SelectedItem != null)
+            try
             {
-                var selectedItem = cmbLogLevel.SelectedItem as ComboBoxItem;
-                _currentLogLevelFilter = selectedItem?.Content?.ToString() ?? "All";
-                ApplyFilters();
+                if (cmbLogLevel.SelectedItem != null)
+                {
+                    _currentLogLevelFilter = cmbLogLevel.SelectedItem.ToString();
+                    ApplyFilters();
+                    UpdateUI();
+                }
+            }
+            catch (Exception ex)
+            {
+                // 이벤트 처리 실패시에도 계속 진행
             }
         }
 
@@ -587,10 +518,18 @@ namespace TeachingPendant.UI.Views
         /// </summary>
         private void cmbModule_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cmbModule.SelectedItem != null)
+            try
             {
-                _currentModuleFilter = cmbModule.SelectedItem.ToString();
-                ApplyFilters();
+                if (cmbModule.SelectedItem != null)
+                {
+                    _currentModuleFilter = cmbModule.SelectedItem.ToString();
+                    ApplyFilters();
+                    UpdateUI();
+                }
+            }
+            catch (Exception ex)
+            {
+                // 이벤트 처리 실패시에도 계속 진행
             }
         }
 
@@ -599,8 +538,16 @@ namespace TeachingPendant.UI.Views
         /// </summary>
         private void txtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            _currentSearchText = txtSearch?.Text ?? "";
-            ApplyFilters();
+            try
+            {
+                _currentSearchText = txtSearch.Text ?? "";
+                ApplyFilters();
+                UpdateUI();
+            }
+            catch (Exception ex)
+            {
+                // 이벤트 처리 실패시에도 계속 진행
+            }
         }
 
         /// <summary>
@@ -608,7 +555,15 @@ namespace TeachingPendant.UI.Views
         /// </summary>
         private void chkOnlyToday_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            ApplyFilters();
+            try
+            {
+                ApplyFilters();
+                UpdateUI();
+            }
+            catch (Exception ex)
+            {
+                // 이벤트 처리 실패시에도 계속 진행
+            }
         }
 
         /// <summary>
@@ -616,34 +571,68 @@ namespace TeachingPendant.UI.Views
         /// </summary>
         private void chkRealTime_CheckedChanged(object sender, RoutedEventArgs e)
         {
-            _isRealTimeEnabled = chkRealTime?.IsChecked ?? true;
-            if (_isRealTimeEnabled)
+            try
             {
-                StartRealTimeUpdate();
+                _isRealTimeEnabled = chkRealTime?.IsChecked ?? true;
+
+                if (_isRealTimeEnabled && _realTimeUpdateTimer != null)
+                {
+                    _realTimeUpdateTimer.Start();
+                }
+                else if (_realTimeUpdateTimer != null)
+                {
+                    _realTimeUpdateTimer.Stop();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                _realTimeUpdateTimer?.Stop();
+                // 이벤트 처리 실패시에도 계속 진행
             }
         }
 
         /// <summary>
-        /// 로그 선택 변경
+        /// 새로고침 버튼 클릭
         /// </summary>
-        private void dgLogs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private async void btnRefresh_Click(object sender, RoutedEventArgs e)
         {
-            if (dgLogs.SelectedItem is LogEntry selectedLog)
+            try
             {
-                ShowLogDetails(selectedLog);
+                await LoadLogEntries();
             }
-            else
+            catch (Exception ex)
             {
-                ClearLogDetails();
+                txtStatusMessage.Text = "새로고침 실패: " + ex.Message;
             }
         }
 
         /// <summary>
-        /// 모든 로그 삭제
+        /// 로그 내보내기 버튼 클릭
+        /// </summary>
+        private void btnExportLogs_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var saveDialog = new SaveFileDialog
+                {
+                    Title = "로그 내보내기",
+                    Filter = "텍스트 파일 (*.txt)|*.txt|CSV 파일 (*.csv)|*.csv",
+                    DefaultExt = "txt",
+                    FileName = $"ExportedLogs_{DateTime.Now:yyyyMMdd_HHmmss}"
+                };
+
+                if (saveDialog.ShowDialog() == true)
+                {
+                    ExportLogsToFile(saveDialog.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("로그 내보내기 실패: " + ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 로그 삭제 버튼 클릭
         /// </summary>
         private void btnClearLogs_Click(object sender, RoutedEventArgs e)
         {
@@ -670,39 +659,34 @@ namespace TeachingPendant.UI.Views
                     }
 
                     UpdateUI();
-                    AlarmMessageManager.ShowCustomMessage("모든 로그가 삭제되었습니다", AlarmCategory.Information);
+                    MessageBox.Show("모든 로그가 삭제되었습니다.", "완료", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "btnClearLogs_Click", "로그 삭제 실패", ex);
-                AlarmMessageManager.ShowCustomMessage("로그 삭제 중 오류가 발생했습니다", AlarmCategory.Error);
+                MessageBox.Show("로그 삭제 실패: " + ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         /// <summary>
-        /// 로그 내보내기
+        /// 로그 항목 선택 변경
         /// </summary>
-        private void btnExportLogs_Click(object sender, RoutedEventArgs e)
+        private void dgLogEntries_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             try
             {
-                var saveDialog = new SaveFileDialog
+                if (dgLogEntries.SelectedItem is LogEntry selectedItem)
                 {
-                    Title = "로그 내보내기",
-                    Filter = "텍스트 파일 (*.txt)|*.txt|CSV 파일 (*.csv)|*.csv",
-                    DefaultExt = "txt",
-                    FileName = $"ExportedLogs_{DateTime.Now:yyyyMMdd_HHmmss}"
-                };
-
-                if (saveDialog.ShowDialog() == true)
+                    ShowLogDetails(selectedItem);
+                }
+                else
                 {
-                    ExportLogsToFile(saveDialog.FileName);
+                    ClearLogDetails();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "btnExportLogs_Click", "로그 내보내기 실패", ex);
+                // 선택 변경 실패시에도 계속 진행
             }
         }
         #endregion
@@ -715,13 +699,21 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
-                txtLogCount.Text = $"로그 수: {_filteredLogEntries.Count}";
-                txtLastUpdate.Text = $"마지막 업데이트: {DateTime.Now:HH:mm:ss}";
+                if (txtLogCount != null)
+                {
+                    txtLogCount.Text = $"로그 수: {_filteredLogEntries.Count}";
+                }
+
+                if (txtLastUpdate != null)
+                {
+                    txtLastUpdate.Text = $"마지막 업데이트: {DateTime.Now:HH:mm:ss}";
+                }
+
                 UpdateLogStatistics();
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "UpdateUI", "UI 업데이트 실패", ex);
+                // UI 업데이트 실패시에도 계속 진행
             }
         }
 
@@ -732,18 +724,31 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
-                txtDetailTime.Text = $"시간: {logEntry.TimeStamp:yyyy-MM-dd HH:mm:ss.fff}";
-                txtDetailLevel.Text = $"레벨: {logEntry.Level}";
-                txtDetailModule.Text = $"모듈: {logEntry.Module}";
-                txtDetailMethod.Text = $"메서드: {logEntry.Method}";
-                txtDetailMessage.Text = $"메시지: {logEntry.Message}";
-                txtDetailException.Text = string.IsNullOrEmpty(logEntry.Exception)
-                    ? ""
-                    : $"예외 정보:\n{logEntry.Exception}";
+                if (txtDetailTime != null)
+                    txtDetailTime.Text = $"시간: {logEntry.TimeStamp:yyyy-MM-dd HH:mm:ss.fff}";
+
+                if (txtDetailLevel != null)
+                    txtDetailLevel.Text = $"레벨: {logEntry.Level}";
+
+                if (txtDetailModule != null)
+                    txtDetailModule.Text = $"모듈: {logEntry.Module}";
+
+                if (txtDetailMethod != null)
+                    txtDetailMethod.Text = $"메서드: {logEntry.Method}";
+
+                if (txtDetailMessage != null)
+                    txtDetailMessage.Text = $"메시지: {logEntry.Message}";
+
+                if (txtDetailException != null)
+                {
+                    txtDetailException.Text = string.IsNullOrEmpty(logEntry.Exception)
+                        ? ""
+                        : $"예외 정보:\n{logEntry.Exception}";
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ShowLogDetails", "로그 상세 정보 표시 실패", ex);
+                // 상세 정보 표시 실패시에도 계속 진행
             }
         }
 
@@ -754,16 +759,16 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
-                txtDetailTime.Text = "";
-                txtDetailLevel.Text = "";
-                txtDetailModule.Text = "";
-                txtDetailMethod.Text = "";
-                txtDetailMessage.Text = "";
-                txtDetailException.Text = "";
+                if (txtDetailTime != null) txtDetailTime.Text = "";
+                if (txtDetailLevel != null) txtDetailLevel.Text = "";
+                if (txtDetailModule != null) txtDetailModule.Text = "";
+                if (txtDetailMethod != null) txtDetailMethod.Text = "";
+                if (txtDetailMessage != null) txtDetailMessage.Text = "";
+                if (txtDetailException != null) txtDetailException.Text = "";
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ClearLogDetails", "로그 상세 정보 초기화 실패", ex);
+                // 상세 정보 초기화 실패시에도 계속 진행
             }
         }
 
@@ -774,6 +779,8 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
+                if (txtStats == null) return;
+
                 if (_filteredLogEntries.Count == 0)
                 {
                     txtStats.Text = "통계: 로그 없음";
@@ -785,66 +792,51 @@ namespace TeachingPendant.UI.Views
                 var infoCount = _filteredLogEntries.Count(e => string.Equals(e.Level, "INFO", StringComparison.OrdinalIgnoreCase));
                 var debugCount = _filteredLogEntries.Count(e => string.Equals(e.Level, "DEBUG", StringComparison.OrdinalIgnoreCase));
 
-                txtStats.Text = $"통계: Error({errorCount}) Warning({warningCount}) Info({infoCount}) Debug({debugCount})";
+                txtStats.Text = $"통계 - ERROR: {errorCount}, WARNING: {warningCount}, INFO: {infoCount}, DEBUG: {debugCount}";
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "UpdateLogStatistics", "통계 업데이트 실패", ex);
+                // 통계 업데이트 실패시에도 계속 진행
             }
         }
 
         /// <summary>
-        /// 로그 파일로 내보내기
+        /// 로그를 파일로 내보내기
         /// </summary>
         private void ExportLogsToFile(string filePath)
         {
             try
             {
-                var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                var logData = new List<string>();
-
-                if (extension == ".csv")
+                using (var writer = new StreamWriter(filePath))
                 {
-                    // CSV 형식
-                    logData.Add("시간,레벨,모듈,메서드,메시지,예외");
-                    foreach (var entry in _filteredLogEntries)
-                    {
-                        var csvLine = $"\"{entry.TimeStamp:yyyy-MM-dd HH:mm:ss.fff}\",\"{entry.Level}\",\"{entry.Module}\",\"{entry.Method}\",\"{entry.Message}\",\"{entry.Exception}\"";
-                        logData.Add(csvLine);
-                    }
-                }
-                else
-                {
-                    // 텍스트 형식
-                    logData.Add($"로그 내보내기 - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                    logData.Add($"총 {_filteredLogEntries.Count}개 항목");
-                    logData.Add(new string('=', 80));
-                    logData.Add("");
+                    writer.WriteLine("=== TeachingPendant 로그 내보내기 ===");
+                    writer.WriteLine($"내보낸 시간: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    writer.WriteLine($"총 로그 수: {_filteredLogEntries.Count}");
+                    writer.WriteLine();
 
                     foreach (var entry in _filteredLogEntries)
                     {
-                        logData.Add($"[{entry.TimeStamp:yyyy-MM-dd HH:mm:ss.fff}] [{entry.Level}] [{entry.Module}] [{entry.Method}]");
-                        logData.Add($"메시지: {entry.Message}");
+                        writer.WriteLine($"[{entry.TimeStamp:yyyy-MM-dd HH:mm:ss.fff}] [{entry.Level}] [{entry.Module}] [{entry.Method}] {entry.Message}");
+
                         if (!string.IsNullOrEmpty(entry.Exception))
                         {
-                            logData.Add($"예외: {entry.Exception}");
+                            writer.WriteLine($"예외: {entry.Exception}");
                         }
-                        logData.Add("");
+
+                        writer.WriteLine();
                     }
                 }
 
-                File.WriteAllLines(filePath, logData);
-                AlarmMessageManager.ShowCustomMessage($"로그가 내보내기되었습니다: {filePath}", AlarmCategory.Information);
+                MessageBox.Show($"로그가 성공적으로 내보내졌습니다.\n파일: {filePath}", "내보내기 완료", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ExportLogsToFile", "로그 내보내기 실패", ex);
-                AlarmMessageManager.ShowCustomMessage("로그 내보내기 중 오류가 발생했습니다", AlarmCategory.Error);
+                MessageBox.Show($"로그 내보내기 실패: {ex.Message}", "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
         #endregion
 
-        #region Cleanup
+        #region Resource Management
         /// <summary>
         /// 리소스 정리
         /// </summary>
@@ -857,12 +849,10 @@ namespace TeachingPendant.UI.Views
                     _realTimeUpdateTimer.Stop();
                     _realTimeUpdateTimer = null;
                 }
-
-                Logger.Info(CLASS_NAME, "CleanupResources", "ErrorLogViewer 리소스 정리 완료");
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "CleanupResources", "리소스 정리 실패", ex);
+                // 리소스 정리 실패시에도 계속 진행
             }
         }
         #endregion

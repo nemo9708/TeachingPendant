@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using UILogEntry = TeachingPendant.UI.Views.LogEntry;
 
 namespace TeachingPendant.Logging
 {
@@ -17,7 +18,7 @@ namespace TeachingPendant.Logging
         private readonly string _logFilePrefix;
         private readonly int _maxFileSizeMB;
         private readonly int _maxFileAgedays;
-        private readonly Queue<LogEntry> _logQueue;
+        private readonly Queue<UILogEntry> _logQueue;  // ✅ 수정: LogEntry → UILogEntry
         private readonly object _queueLock = new object();
         private readonly Timer _flushTimer;
         private readonly CancellationTokenSource _cancellationTokenSource;
@@ -50,7 +51,7 @@ namespace TeachingPendant.Logging
             _logFilePrefix = logFilePrefix;
             _maxFileSizeMB = maxFileSizeMB;
             _maxFileAgedays = maxFileAgeDays;
-            _logQueue = new Queue<LogEntry>();
+            _logQueue = new Queue<UILogEntry>();  // ✅ 수정: LogEntry → UILogEntry
             _cancellationTokenSource = new CancellationTokenSource();
 
             // 로그 디렉토리 생성
@@ -71,7 +72,7 @@ namespace TeachingPendant.Logging
         /// <summary>
         /// 로그 엔트리를 큐에 추가 (비동기적으로 파일에 기록됨)
         /// </summary>
-        public void WriteLog(LogEntry logEntry)
+        public void WriteLog(UILogEntry logEntry)  // ✅ 수정: LogEntry → UILogEntry
         {
             if (_disposed || logEntry == null)
                 return;
@@ -137,7 +138,7 @@ namespace TeachingPendant.Logging
             {
                 try
                 {
-                    var logsToWrite = new List<LogEntry>();
+                    var logsToWrite = new List<UILogEntry>();  // ✅ 수정: LogEntry → UILogEntry
 
                     // 큐에서 로그 엔트리들을 가져오기
                     lock (_queueLock)
@@ -173,7 +174,7 @@ namespace TeachingPendant.Logging
         /// <summary>
         /// 로그 엔트리들을 파일에 실제로 기록
         /// </summary>
-        private async Task WriteLogsToFile(List<LogEntry> logs)
+        private async Task WriteLogsToFile(List<UILogEntry> logs)  // ✅ 수정: LogEntry → UILogEntry
         {
             try
             {

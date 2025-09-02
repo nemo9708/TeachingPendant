@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using TeachingPendant.Alarm;
+using UILogEntry = TeachingPendant.UI.Views.LogEntry;
 
 namespace TeachingPendant.Logging
 {
@@ -312,10 +313,14 @@ namespace TeachingPendant.Logging
                 // 파일 로깅
                 if (_fileWriter != null)
                 {
-                    var logEntry = new LogEntry(level, module, method, message, exception)
-                    {
-                        Context = context
-                    };
+                    var logEntry = new UILogEntry(
+                        DateTime.Now,           // TimeStamp
+                        level.ToShortString(),  // Level (string으로 변환)
+                        module,                 // Module
+                        method,                 // Method
+                        message,                // Message
+                        exception?.ToString()   // Exception (string으로 변환)
+                    );
                     _fileWriter.WriteLog(logEntry);
                 }
             }
