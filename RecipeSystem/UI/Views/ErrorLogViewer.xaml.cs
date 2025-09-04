@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using TeachingPendant.Alarm;
+using System.Windows.Input;
 
 namespace TeachingPendant.UI.Views
 {
@@ -100,6 +101,30 @@ namespace TeachingPendant.UI.Views
         }
 
         /// <summary>
+        /// 임시 메시지 표시 (txtStatusMessage 대신)
+        /// </summary>
+        private void ShowTempMessage(string message, int durationMs = 3000)
+        {
+            // txtStatusMessage가 없으므로 txtStats를 활용
+            if (txtStats != null)
+            {
+                string originalText = txtStats.Text;
+                txtStats.Text = message;
+                txtStats.FontWeight = System.Windows.FontWeights.Bold;
+
+                var timer = new System.Windows.Threading.DispatcherTimer();
+                timer.Interval = TimeSpan.FromMilliseconds(durationMs);
+                timer.Tick += (s, e) =>
+                {
+                    txtStats.Text = originalText;
+                    txtStats.FontWeight = System.Windows.FontWeights.Normal;
+                    ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                };
+                timer.Start();
+            }
+        }
+
+        /// <summary>
         /// 현재 로그 파일 경로 설정
         /// </summary>
         private void SetCurrentLogFilePath()
@@ -130,20 +155,15 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
-                // 요구사항에 따라 '레벨' 필터는 비워둡니다.
+                // 레벨 필터는 비워둠
                 if (cmbLogLevel != null)
                 {
-                    // ItemsSource를 null로 설정하여 목록을 비웁니다.
                     cmbLogLevel.ItemsSource = null;
-
-                    // 사용자가 헷갈리지 않도록 컨트롤을 비활성화 처리하는 것이 좋아요.
                     cmbLogLevel.IsEnabled = false;
                 }
 
-                // '모듈' 필터에만 동적으로 모듈 리스트를 채우는 로직을 실행합니다.
+                // 모듈 필터 초기화
                 await InitializeModuleFilter();
-
-                // --- 이하 검색, 체크박스, 버튼 이벤트 연결 코드는 동일 ---
 
                 // 검색 박스 이벤트 연결
                 if (txtSearch != null)
@@ -175,6 +195,18 @@ namespace TeachingPendant.UI.Views
                     btnExportLogs.Click += btnExportLogs_Click;
                 }
 
+                // 선택 삭제 버튼 이벤트 연결 (중요!)
+                if (btnDeleteSelected != null)
+                {
+                    btnDeleteSelected.Click += btnDeleteSelected_Click;
+                    System.Diagnostics.Debug.WriteLine("btnDeleteSelected 이벤트 연결 완료");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("btnDeleteSelected이 null입니다!");
+                }
+
+                // 전체 삭제 버튼 이벤트
                 if (btnClearLogs != null)
                 {
                     btnClearLogs.Click += btnClearLogs_Click;
@@ -184,12 +216,135 @@ namespace TeachingPendant.UI.Views
                 if (dgLogEntries != null)
                 {
                     dgLogEntries.SelectionChanged += dgLogEntries_SelectionChanged;
+                    dgLogEntries.PreviewKeyDown += dgLogEntries_PreviewKeyDown;
+                    System.Diagnostics.Debug.WriteLine("dgLogEntries PreviewKeyDown 이벤트 연결 완료");
+                }
+
+                // UserControl 레벨 키보드 이벤트
+                this.PreviewKeyDown += Window_PreviewKeyDown;
+                System.Diagnostics.Debug.WriteLine("Window_PreviewKeyDown 이벤트 연결 완료");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("InitializeFilters 에러: " + ex.Message);
+            }
+        }
+
+        // 컨텍스트 메뉴 초기화 (새로 추가 - 선택사항)
+        private void InitializeContextMenu()
+        {
+            var contextMenu = new System.Windows.Controls.ContextMenu();
+
+            // 선택 삭제 메뉴
+            var deleteSelectedMenuItem = new System.Windows.Controls.MenuItem();
+            deleteSelectedMenuItem.Header = "선택한 항목 삭제";
+            deleteSelectedMenuItem.Click += (s, e) => DeleteSelectedLogs();
+            contextMenu.Items.Add(deleteSelectedMenuItem);
+
+            // 구분선
+            contextMenu.Items.Add(new System.Windows.Controls.Separator());
+
+            // 전체 선택 메뉴
+            var selectAllMenuItem = new System.Windows.Controls.MenuItem();
+            selectAllMenuItem.Header = "전체 선택 (Ctrl+A)";
+            selectAllMenuItem.Click += (s, e) => SelectAllLogs();
+            contextMenu.Items.Add(selectAllMenuItem);
+
+            // 선택 해제 메뉴
+            var deselectMenuItem = new System.Windows.Controls.MenuItem();
+            deselectMenuItem.Header = "선택 해제 (Esc)";
+            deselectMenuItem.Click += (s, e) => DeselectAllLogs();
+            contextMenu.Items.Add(deselectMenuItem);
+
+            // 구분선
+            contextMenu.Items.Add(new System.Windows.Controls.Separator());
+
+            // 복사 메뉴
+            var copyMenuItem = new System.Windows.Controls.MenuItem();
+            copyMenuItem.Header = "선택한 로그 복사";
+            copyMenuItem.Click += (s, e) => CopySelectedLogs();
+            contextMenu.Items.Add(copyMenuItem);
+
+            // DataGrid에 컨텍스트 메뉴 연결
+            if (dgLogEntries != null)
+            {
+                dgLogEntries.ContextMenu = contextMenu;
+            }
+        }
+
+        // 선택한 로그를 클립보드에 복사하는 메서드 (새로 추가)
+        private void CopySelectedLogs()
+        {
+            try
+            {
+                if (dgLogEntries.SelectedItems.Count == 0)
+                    return;
+
+                var selectedLogs = new System.Text.StringBuilder();
+                foreach (var item in dgLogEntries.SelectedItems)
+                {
+                    var logEntry = item as LogEntry;
+                    if (logEntry != null)
+                    {
+                        selectedLogs.AppendLine(FormatLogEntry(logEntry));
+                    }
+                }
+
+                if (selectedLogs.Length > 0)
+                {
+                    System.Windows.Clipboard.SetText(selectedLogs.ToString());
+
+                    int count = dgLogEntries.SelectedItems.Count;
+                    string message = count == 1
+                        ? "로그 1개가 클립보드에 복사되었습니다."
+                        : string.Format("로그 {0}개가 클립보드에 복사되었습니다.", count);
+
+                    ShowTempMessage(message, 3000);
                 }
             }
             catch (Exception ex)
             {
-                // 필터 초기화 실패시에도 계속 진행
+                MessageBox.Show("클립보드 복사 실패: " + ex.Message, "오류", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        // 상태바에 임시 메시지 표시 (새로 추가)
+        private void ShowStatusMessage(string message, int durationMs = 3000)
+        {
+            if (txtStats != null)
+            {
+                string originalText = txtStats.Text;
+                txtStats.Text = message;
+                txtStats.FontWeight = System.Windows.FontWeights.Bold;
+
+                var timer = new System.Windows.Threading.DispatcherTimer();
+                timer.Interval = TimeSpan.FromMilliseconds(durationMs);
+                timer.Tick += (s, e) =>
+                {
+                    txtStats.Text = originalText;
+                    txtStats.FontWeight = System.Windows.FontWeights.Normal;
+                    timer.Stop();
+                };
+                timer.Start();
+            }
+        }
+
+        // 키보드 단축키 초기화 메서드 (새로 추가)
+        private void InitializeKeyboardShortcuts()
+        {
+            // UserControl 레벨에서 키 이벤트 처리
+            this.PreviewKeyDown += Window_PreviewKeyDown;
+
+            // F5 키로 새로고침 (기존 btnRefresh_Click 활용)
+            this.KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.F5)
+                {
+                    // btnRefresh_Click 이벤트 직접 호출
+                    btnRefresh_Click(null, null);
+                    e.Handled = true;
+                }
+            };
         }
 
         /// <summary>
@@ -772,6 +927,10 @@ namespace TeachingPendant.UI.Views
         {
             try
             {
+                // 선택된 항목 개수 업데이트 추가
+                UpdateSelectedCount();
+
+                // 기존 코드 유지
                 if (dgLogEntries.SelectedItem is LogEntry selectedItem)
                 {
                     ShowLogDetails(selectedItem);
@@ -786,6 +945,47 @@ namespace TeachingPendant.UI.Views
                 // 선택 변경 실패시에도 계속 진행
             }
         }
+
+        // 선택 항목 개수 업데이트 메서드 (새로 추가)
+        private void UpdateSelectedCount()
+        {
+            try
+            {
+                if (dgLogEntries != null)
+                {
+                    int selectedCount = dgLogEntries.SelectedItems.Count;
+
+                    // 상태바가 없으므로 툴팁으로만 표시
+                    if (btnDeleteSelected != null)
+                    {
+                        btnDeleteSelected.IsEnabled = selectedCount > 0;
+
+                        if (selectedCount > 0)
+                        {
+                            btnDeleteSelected.ToolTip = string.Format("선택한 {0}개 로그 삭제 (Delete 키)", selectedCount);
+                        }
+                        else
+                        {
+                            btnDeleteSelected.ToolTip = "삭제할 로그를 먼저 선택하세요";
+                        }
+                    }
+
+                    // 통계 텍스트에 선택 개수 표시 (옵션)
+                    if (txtStats != null && selectedCount > 0)
+                    {
+                        var stats = txtStats.Text;
+                        if (!stats.Contains("선택:"))
+                        {
+                            txtStats.Text = stats + string.Format(" | 선택: {0}개", selectedCount);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // 업데이트 실패시 무시
+            }
+        }
         #endregion
 
         #region UI Updates
@@ -798,15 +998,16 @@ namespace TeachingPendant.UI.Views
             {
                 if (txtLogCount != null)
                 {
-                    txtLogCount.Text = $"로그 수: {_filteredLogEntries.Count}";
+                    txtLogCount.Text = string.Format("로그 수: {0}", _filteredLogEntries.Count);
                 }
 
                 if (txtLastUpdate != null)
                 {
-                    txtLastUpdate.Text = $"마지막 업데이트: {DateTime.Now:HH:mm:ss}";
+                    txtLastUpdate.Text = string.Format("마지막 업데이트: {0:HH:mm:ss}", DateTime.Now);
                 }
 
                 UpdateLogStatistics();
+                UpdateSelectedCount(); // 선택 개수 업데이트 추가
             }
             catch (Exception ex)
             {
@@ -950,6 +1151,227 @@ namespace TeachingPendant.UI.Views
             catch (Exception ex)
             {
                 // 리소스 정리 실패시에도 계속 진행
+            }
+        }
+        #endregion
+
+        #region Delete Selected Logs
+        /// <summary>
+        /// 선택된 로그 항목만 삭제
+        /// </summary>
+        private void DeleteSelectedLogs()
+        {
+            System.Diagnostics.Debug.WriteLine("===== DeleteSelectedLogs 메서드 시작 =====");
+
+            try
+            {
+                // 선택된 항목이 없는지 확인
+                if (dgLogEntries.SelectedItems == null || dgLogEntries.SelectedItems.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("선택된 항목이 없음");
+                    MessageBox.Show("삭제할 로그를 선택해주세요.",
+                                  "선택 없음",
+                                  MessageBoxButton.OK,
+                                  MessageBoxImage.Information);
+                    return;
+                }
+
+                int selectedCount = dgLogEntries.SelectedItems.Count;
+                System.Diagnostics.Debug.WriteLine(string.Format("선택된 항목 수: {0}", selectedCount));
+
+                string message = selectedCount == 1
+                    ? "선택한 로그 1개를 삭제하시겠습니까?"
+                    : string.Format("선택한 로그 {0}개를 삭제하시겠습니까?", selectedCount);
+
+                var result = MessageBox.Show(
+                    message + "\n\n이 작업은 메모리에서만 삭제됩니다.",
+                    "로그 삭제 확인",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    System.Diagnostics.Debug.WriteLine("사용자가 Yes를 선택함");
+
+                    // 삭제할 항목들을 리스트로 복사
+                    var itemsToDelete = new List<LogEntry>();
+                    foreach (var item in dgLogEntries.SelectedItems)
+                    {
+                        var logEntry = item as LogEntry;
+                        if (logEntry != null)
+                        {
+                            itemsToDelete.Add(logEntry);
+                            System.Diagnostics.Debug.WriteLine(string.Format("삭제 대상: {0} - {1}",
+                                logEntry.TimeStamp, logEntry.Message));
+                        }
+                    }
+
+                    System.Diagnostics.Debug.WriteLine(string.Format("삭제 전: _filteredLogEntries={0}, _logEntries={1}",
+                        _filteredLogEntries.Count, _logEntries.Count));
+
+                    // UI 스레드에서 실행
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        foreach (var logEntry in itemsToDelete)
+                        {
+                            _filteredLogEntries.Remove(logEntry);
+                            _logEntries.Remove(logEntry);
+                        }
+
+                        UpdateUI();
+                        dgLogEntries.Items.Refresh();
+                    });
+
+                    System.Diagnostics.Debug.WriteLine(string.Format("삭제 후: _filteredLogEntries={0}, _logEntries={1}",
+                        _filteredLogEntries.Count, _logEntries.Count));
+
+                    string completeMessage = selectedCount == 1
+                        ? "선택한 로그가 삭제되었습니다."
+                        : string.Format("선택한 로그 {0}개가 삭제되었습니다.", selectedCount);
+
+                    MessageBox.Show(completeMessage, "완료", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("사용자가 No를 선택함");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("DeleteSelectedLogs 에러: " + ex.ToString());
+                MessageBox.Show("선택 로그 삭제 실패: " + ex.Message,
+                              "오류",
+                              MessageBoxButton.OK,
+                              MessageBoxImage.Error);
+            }
+
+            System.Diagnostics.Debug.WriteLine("===== DeleteSelectedLogs 메서드 종료 =====");
+        }
+
+        /// <summary>
+        /// 로그 파일을 현재 메모리 상태로 업데이트
+        /// </summary>
+        private void UpdateLogFile()
+        {
+            try
+            {
+                if (!File.Exists(_currentLogFilePath))
+                    return;
+
+                // 임시 파일 경로
+                string tempFile = _currentLogFilePath + ".tmp";
+
+                // 남은 로그들을 임시 파일에 기록
+                using (var writer = new StreamWriter(tempFile, false))
+                {
+                    lock (_lockObject)
+                    {
+                        foreach (var logEntry in _logEntries.OrderBy(e => e.TimeStamp))
+                        {
+                            // 원본 로그 형식으로 재구성
+                            string logLine = FormatLogEntry(logEntry);
+                            writer.WriteLine(logLine);
+                        }
+                    }
+                }
+
+                // 원본 파일을 임시 파일로 교체
+                File.Delete(_currentLogFilePath);
+                File.Move(tempFile, _currentLogFilePath);
+            }
+            catch (Exception ex)
+            {
+                // 파일 업데이트 실패시 메모리 상태만 유지
+                System.Diagnostics.Debug.WriteLine("로그 파일 업데이트 실패: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// LogEntry를 원본 로그 형식 문자열로 변환
+        /// </summary>
+        private string FormatLogEntry(LogEntry logEntry)
+        {
+            // 원본 로그 형식: [2025-06-19 16:30:45.123] [INFO] [Teaching] [SaveCurrentData] Message
+            string timestamp = logEntry.TimeStamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            string formattedLog = string.Format("[{0}] [{1}] [{2}] [{3}] {4}",
+                timestamp, logEntry.Level, logEntry.Module, logEntry.Method, logEntry.Message);
+
+            // 예외 정보가 있으면 추가
+            if (!string.IsNullOrEmpty(logEntry.Exception))
+            {
+                formattedLog += "\nException: " + logEntry.Exception;
+            }
+
+            return formattedLog;
+        }
+
+        /// <summary>
+        /// 선택 삭제 버튼 클릭 이벤트 핸들러
+        /// </summary>
+        private void btnDeleteSelected_Click(object sender, RoutedEventArgs e)
+        {
+            System.Diagnostics.Debug.WriteLine("btnDeleteSelected_Click 이벤트 발생!");
+            DeleteSelectedLogs();
+        }
+
+
+        /// <summary>
+        /// Delete 키 눌림 이벤트 핸들러
+        /// </summary>
+        private void dgLogEntries_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Delete)
+            {
+                System.Diagnostics.Debug.WriteLine("Delete 키 눌림!");
+                DeleteSelectedLogs();
+                e.Handled = true;
+            }
+        }
+        #endregion
+
+        #region Selection Management
+        /// <summary>
+        /// 전체 선택 기능
+        /// </summary>
+        private void SelectAllLogs()
+        {
+            if (dgLogEntries != null)
+            {
+                dgLogEntries.SelectAll();
+                UpdateSelectedCount();
+            }
+        }
+
+
+        /// <summary>
+        /// 선택 해제 기능
+        /// </summary>
+        private void DeselectAllLogs()
+        {
+            if (dgLogEntries != null)
+            {
+                dgLogEntries.UnselectAll();
+                UpdateSelectedCount();
+            }
+        }
+
+        /// <summary>
+        /// Ctrl+A 키 조합 처리
+        /// </summary>
+        private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.A &&
+                System.Windows.Input.Keyboard.Modifiers == System.Windows.Input.ModifierKeys.Control)
+            {
+                System.Diagnostics.Debug.WriteLine("Ctrl+A 눌림!");
+                SelectAllLogs();
+                e.Handled = true;
+            }
+            else if (e.Key == System.Windows.Input.Key.Escape)
+            {
+                System.Diagnostics.Debug.WriteLine("ESC 키 눌림!");
+                DeselectAllLogs();
+                e.Handled = true;
             }
         }
         #endregion

@@ -57,3 +57,5 @@ C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\ComSetting
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\ComSettingsWindow.g.cs
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\VirtualKeyboard\VirtualKeyboard.baml
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\VirtualKeyboard\VirtualKeyboard.g.cs
+C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\ErrorLogViewer.baml
+C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\ErrorLogViewer.g.cs
