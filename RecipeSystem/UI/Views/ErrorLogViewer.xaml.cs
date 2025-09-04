@@ -347,7 +347,6 @@ namespace TeachingPendant.UI.Views
 
             try
             {
-                // 간단한 파싱 로직
                 if (logLine.Contains("[") && logLine.Contains("]"))
                 {
                     var parts = logLine.Split(new char[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
@@ -360,7 +359,22 @@ namespace TeachingPendant.UI.Views
                             var level = parts.Length > 1 ? parts[1].Trim() : "";
                             var module = parts.Length > 2 ? parts[2].Trim() : "";
                             var method = parts.Length > 3 ? parts[3].Trim() : "";
+
                             var message = parts.Length > 4 ? parts[4].Trim() : "";
+
+                            for (int i = 5; i < parts.Length; i++)
+                            {
+                                if (!string.IsNullOrEmpty(parts[i].Trim()))
+                                {
+                                    message += " " + parts[i].Trim();
+                                }
+                            }
+
+                            var extractedMethod = ExtractMethodFromMessage(message);
+                            if (!string.IsNullOrEmpty(extractedMethod) && string.IsNullOrEmpty(method))
+                            {
+                                method = extractedMethod;
+                            }
 
                             return new LogEntry
                             {
@@ -376,10 +390,93 @@ namespace TeachingPendant.UI.Views
             }
             catch
             {
-                // 파싱 실패시 null 반환
+                return null;
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// 메시지에서 메서드 이름을 추출
+        /// </summary>
+        /// <param name="message">로그 메시지</param>
+        /// <returns>추출된 메서드 이름</returns>
+        private string ExtractMethodFromMessage(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return "";
+
+            try
+            {
+                var methodPatterns = new string[]
+                {
+            " 호출", " 실행", " 완료", " 시작", " 종료",
+            " called", " executed", " completed", " started", " finished",
+            ":", "() ", "()", " - "
+                };
+
+                foreach (var pattern in methodPatterns)
+                {
+                    int index = message.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+                    if (index > 0)
+                    {
+                        string beforePattern = message.Substring(0, index).Trim();
+                        string[] words = beforePattern.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        if (words.Length > 0)
+                        {
+                            string lastWord = words[words.Length - 1];
+                            if (IsValidMethodName(lastWord))
+                            {
+                                return lastWord;
+                            }
+                        }
+                    }
+                }
+
+                string[] messageWords = message.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                if (messageWords.Length > 0)
+                {
+                    string firstWord = messageWords[0];
+                    if (IsValidMethodName(firstWord))
+                    {
+                        return firstWord;
+                    }
+                }
+            }
+            catch
+            {
+                return "";
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// 유효한 메서드명 패턴인지 확인
+        /// </summary>
+        /// <param name="word">확인할 단어</param>
+        /// <returns>유효한 메서드명인지 여부</returns>
+        private bool IsValidMethodName(string word)
+        {
+            if (string.IsNullOrEmpty(word) || word.Length < 3)
+                return false;
+
+            if (!char.IsLetter(word[0]))
+                return false;
+
+            word = word.TrimEnd('(', ')');
+
+            foreach (char c in word)
+            {
+                if (!char.IsLetterOrDigit(c) && c != '_')
+                    return false;
+            }
+
+            if (word.Length > 50)
+                return false;
+
+            return true;
         }
         #endregion
 

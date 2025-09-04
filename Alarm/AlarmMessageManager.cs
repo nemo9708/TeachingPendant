@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using TeachingPendant.Logging;
 
 namespace TeachingPendant.Alarm
 {
@@ -162,6 +163,30 @@ namespace TeachingPendant.Alarm
 
                 DisplayMessage(formattedMessage);
 
+                // Logger에 알람 기록 추가 - 간단한 방식
+                try
+                {
+                    var category = GetAlarmCategory(alarmId);
+                    string logMessage = $"[ALARM:{alarmId}] {message}";
+
+                    if (category == AlarmCategory.Error)
+                    {
+                        Logger.Error("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                    else if (category == AlarmCategory.Warning)
+                    {
+                        Logger.Warning("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                    else
+                    {
+                        Logger.Info("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                }
+                catch
+                {
+                    // Logger 호출 실패해도 알람은 계속 표시
+                }
+
                 System.Diagnostics.Debug.WriteLine($"ShowAlarm complete: {formattedMessage}");
             }
             catch (Exception ex)
@@ -177,7 +202,7 @@ namespace TeachingPendant.Alarm
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"=== ShowAlarm (with additional message) called: {alarmId} - {additionalMessage} ===");
+                System.Diagnostics.Debug.WriteLine($"=== ShowAlarm called: {alarmId}, Message: {additionalMessage} ===");
 
                 if (!ValidateComponents(alarmId))
                 {
@@ -186,42 +211,112 @@ namespace TeachingPendant.Alarm
                 }
 
                 var baseMessage = GetAlarmMessage(alarmId);
-                var combinedMessage = $"{baseMessage} - {additionalMessage}";
+                var combinedMessage = string.IsNullOrEmpty(additionalMessage)
+                    ? baseMessage
+                    : $"{baseMessage}: {additionalMessage}";
+
                 var formattedMessage = FormatMessage(alarmId, combinedMessage);
 
                 DisplayMessage(formattedMessage);
 
-                System.Diagnostics.Debug.WriteLine($"ShowAlarm (with additional message) complete: {formattedMessage}");
+                // Logger에 알람 기록 추가 - 간단한 방식
+                try
+                {
+                    var category = GetAlarmCategory(alarmId);
+                    string logMessage = $"[ALARM:{alarmId}] {combinedMessage}";
+
+                    if (category == AlarmCategory.Error)
+                    {
+                        Logger.Error("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                    else if (category == AlarmCategory.Warning)
+                    {
+                        Logger.Warning("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                    else
+                    {
+                        Logger.Info("AlarmMessageManager", "ShowAlarm", logMessage, showInUI: false);
+                    }
+                }
+                catch
+                {
+                    // Logger 호출 실패해도 알람은 계속 표시
+                }
+
+                System.Diagnostics.Debug.WriteLine($"ShowAlarm complete: {formattedMessage}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ShowAlarm (with additional message) error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ShowAlarm with additional message error: {ex.Message}");
             }
         }
 
         /// <summary>
         /// 사용자 정의 메시지 표시
         /// </summary>
-        public static void ShowCustomMessage(string message, AlarmCategory category = AlarmCategory.Information)
+        public static void ShowCustomMessage(string message, AlarmCategory category)
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine($"=== ShowCustomMessage called: {message} ({category}) ===");
+                System.Diagnostics.Debug.WriteLine($"=== ShowCustomMessage called: {message}, Category: {category} ===");
 
                 if (!ValidateComponents("CUSTOM"))
                 {
-                    System.Diagnostics.Debug.WriteLine("ValidateComponents failed");
+                    System.Diagnostics.Debug.WriteLine("ValidateComponents failed for custom message");
                     return;
                 }
 
-                var formattedMessage = $"Alarm: [{category}] {message}";
+                var formattedMessage = FormatCustomMessage(category, message);
                 DisplayMessage(formattedMessage);
+
+                // Logger에 커스텀 메시지 기록 추가 - 간단한 방식
+                try
+                {
+                    string logMessage = $"[CUSTOM] {message}";
+
+                    if (category == AlarmCategory.Error)
+                    {
+                        Logger.Error("AlarmMessageManager", "ShowCustomMessage", logMessage, showInUI: false);
+                    }
+                    else if (category == AlarmCategory.Warning)
+                    {
+                        Logger.Warning("AlarmMessageManager", "ShowCustomMessage", logMessage, showInUI: false);
+                    }
+                    else
+                    {
+                        Logger.Info("AlarmMessageManager", "ShowCustomMessage", logMessage, showInUI: false);
+                    }
+                }
+                catch
+                {
+                    // Logger 호출 실패해도 메시지는 계속 표시
+                }
 
                 System.Diagnostics.Debug.WriteLine($"ShowCustomMessage complete: {formattedMessage}");
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ShowCustomMessage error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 알람 ID에서 카테고리를 추출하는 간단한 헬퍼 메서드
+        /// </summary>
+        private static AlarmCategory GetAlarmCategory(string alarmId)
+        {
+            if (string.IsNullOrEmpty(alarmId) || alarmId.Length < 1)
+                return AlarmCategory.Information;
+
+            // 첫 글자로 카테고리 판단
+            switch (alarmId[0])
+            {
+                case 'A': return AlarmCategory.Information;
+                case 'B': return AlarmCategory.Warning;
+                case 'C': return AlarmCategory.Error;
+                case 'D': return AlarmCategory.Success;
+                case 'E': return AlarmCategory.System;
+                default: return AlarmCategory.Information;
             }
         }
 
@@ -247,6 +342,19 @@ namespace TeachingPendant.Alarm
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ShowDirectMessage error: {ex.Message}");
+            }
+        }
+
+        private static string FormatCustomMessage(AlarmCategory category, string message)
+        {
+            try
+            {
+                var categoryText = category.ToString().ToUpper();
+                return $"[{categoryText}] {message}";
+            }
+            catch
+            {
+                return message;
             }
         }
         #endregion
