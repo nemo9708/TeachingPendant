@@ -8,25 +8,28 @@
              Background="#1E1E1E">
 
     <UserControl.Resources>
-        <!-- 툴바 버튼 스타일 -->
+
         <Style x:Key="ToolbarButtonStyle" TargetType="Button">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="Margin" Value="2"/>
+
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Opacity" Value="0.8"/>
                 </Trigger>
+
                 <Trigger Property="IsPressed" Value="True">
                     <Setter Property="Opacity" Value="0.6"/>
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Opacity" Value="0.4"/>
                 </Trigger>
+
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
@@ -38,297 +41,345 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 툴바 영역 -->
         <Border Grid.Row="0" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
             <Grid Margin="5">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+
                 </Grid.ColumnDefinitions>
 
-                <!-- 왼쪽 필터 컨트롤들 -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- 레벨 필터 -->
                     <TextBlock Text="레벨:" Foreground="White" VerticalAlignment="Center" Margin="5,0"/>
+
                     <ComboBox x:Name="cmbLogLevel" 
                               Width="100" 
                               Height="24"
+                  
                               Background="#252526" 
                               Foreground="White">
                         <ComboBoxItem>전체</ComboBoxItem>
                         <ComboBoxItem>ERROR</ComboBoxItem>
+
                         <ComboBoxItem>WARNING</ComboBoxItem>
                         <ComboBoxItem>INFO</ComboBoxItem>
                         <ComboBoxItem>DEBUG</ComboBoxItem>
                     </ComboBox>
 
-                    <!-- 모듈 필터 -->
+
                     <TextBlock Text="모듈:" Foreground="White" VerticalAlignment="Center" Margin="10,0,5,0"/>
                     <ComboBox x:Name="cmbModule" 
                               Width="150" 
+                 
                               Height="24"
                               Background="#252526" 
-                              Foreground="White"/>
+                              Foreground="White">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem">
+                                <Setter Property="Foreground" Value="Black"/>
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
 
-                    <!-- 오늘 날짜만 체크박스 -->
                     <CheckBox x:Name="chkOnlyToday" 
                               Content="오늘 로그만" 
                               Foreground="White" 
+                 
                               VerticalAlignment="Center" 
                               Margin="10,0"/>
 
-                    <!-- 실시간 모니터링 체크박스 -->
                     <CheckBox x:Name="chkRealTime" 
-                              Content="실시간 모니터링" 
+          
+                             Content="실시간 모니터링" 
                               Foreground="#00FF00" 
                               VerticalAlignment="Center" 
-                              Margin="5,0"/>
+                
+                               Margin="5,0"/>
                 </StackPanel>
 
-                <!-- 중앙 검색 영역 -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="🔍" Foreground="White" VerticalAlignment="Center" Margin="5,0"/>
+
                     <TextBox x:Name="txtSearch" 
                              Width="300"
                              Height="24"
+                          
                              Background="#2D2D30" 
                              Foreground="#FFFFFF" 
                              BorderBrush="#3F3F46"
                              Padding="5,3"/>
+
                 </StackPanel>
 
-                <!-- 오른쪽 버튼들 -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <!-- 선택 삭제 버튼 -->
                     <Button x:Name="btnDeleteSelected" 
-                            Content="🗑️ 선택 삭제" 
+       
+                             Content="🗑️ 선택 삭제" 
                             Style="{StaticResource ToolbarButtonStyle}"
                             Background="#FF9800" 
-                            BorderBrush="#F57C00"
+                  
+                           BorderBrush="#F57C00"
                             ToolTip="선택한 로그만 삭제 (Delete 키)"/>
 
-                    <!-- 전체 삭제 버튼 -->
                     <Button x:Name="btnClearLogs" 
-                            Content="🗑️ 전체 삭제" 
+            
+                         Content="🗑️ 전체 삭제" 
                             Style="{StaticResource ToolbarButtonStyle}"
                             Background="#FF6B6B" 
-                            BorderBrush="#E53935"
+                       
+                             BorderBrush="#E53935"
                             ToolTip="모든 로그 삭제"/>
 
-                    <!-- 구분선 -->
                     <Border Width="1" 
-                            Background="#3F3F46" 
+                     
+                       Background="#3F3F46" 
                             Margin="5,2"/>
 
-                    <!-- 내보내기 버튼 -->
                     <Button x:Name="btnExportLogs" 
-                            Content="💾 내보내기" 
+                   
+                         Content="💾 내보내기" 
                             Style="{StaticResource ToolbarButtonStyle}"
                             Background="#4CAF50" 
                             BorderBrush="#388E3C"
-                            ToolTip="로그를 파일로 저장"/>
+   
+                                         ToolTip="로그를 파일로 저장"/>
 
-                    <!-- 새로고침 버튼 -->
                     <Button x:Name="btnRefresh" 
-                            Content="🔄 새로고침" 
+                            
+                         Content="🔄 새로고침" 
                             Style="{StaticResource ToolbarButtonStyle}"
                             Background="#2196F3" 
                             BorderBrush="#1976D2"
-                            ToolTip="로그 목록 새로고침 (F5)"/>
+            
+                         ToolTip="로그 목록 새로고침 (F5)"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 메인 컨텐츠 영역 -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
+
                 <ColumnDefinition Width="2*"/>
                 <ColumnDefinition Width="5"/>
                 <ColumnDefinition Width="1*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 로그 목록 DataGrid -->
             <Border Grid.Column="0" Background="#252526" BorderBrush="#3F3F46" BorderThickness="1">
                 <DataGrid x:Name="dgLogEntries"
                           AutoGenerateColumns="False"
                           HeadersVisibility="Column"
                           GridLinesVisibility="None"
-                          AlternatingRowBackground="#2D2D30"
+                      
+                             AlternatingRowBackground="#2D2D30"
                           Background="#1E1E1E"
                           Foreground="#FFFFFF"
                           BorderThickness="0"
-                          RowHeaderWidth="0"
+                  
+                         RowHeaderWidth="0"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
                           IsReadOnly="True"
-                          SelectionMode="Extended"
+              
+                             SelectionMode="Extended"
                           SelectionUnit="FullRow"
                           PreviewKeyDown="dgLogEntries_PreviewKeyDown">
 
                     <DataGrid.RowStyle>
+
                         <Style TargetType="DataGridRow">
                             <Setter Property="Background" Value="#252526"/>
                             <Setter Property="Foreground" Value="#FFFFFF"/>
                             <Style.Triggers>
+
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Background" Value="#2D2D30"/>
+
                                 </Trigger>
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="#094771"/>
+
                                     <Setter Property="Foreground" Value="#FFFFFF"/>
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
+
                     </DataGrid.RowStyle>
 
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader">
                             <Setter Property="Background" Value="#007ACC"/>
+
                             <Setter Property="Foreground" Value="#FFFFFF"/>
                             <Setter Property="BorderBrush" Value="#3F3F46"/>
                             <Setter Property="BorderThickness" Value="0,0,1,1"/>
+
                             <Setter Property="Padding" Value="8,5"/>
                             <Setter Property="FontWeight" Value="SemiBold"/>
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
 
+
                     <DataGrid.CellStyle>
                         <Style TargetType="DataGridCell">
                             <Setter Property="BorderThickness" Value="0"/>
                             <Setter Property="Padding" Value="5,3"/>
+
                             <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="Foreground" Value="#FFFFFF"/>
                             <Style.Triggers>
+
                                 <Trigger Property="IsSelected" Value="True">
                                     <Setter Property="Background" Value="#094771"/>
                                     <Setter Property="Foreground" Value="#FFFFFF"/>
+
                                 </Trigger>
                             </Style.Triggers>
                         </Style>
                     </DataGrid.CellStyle>
 
+
                     <DataGrid.Columns>
-                        <!-- 시간 컬럼 -->
                         <DataGridTextColumn Header="시간" 
-                                            Binding="{Binding TimeStamp, StringFormat='HH:mm:ss.fff'}" 
+                                    
+                                 Binding="{Binding TimeStamp, StringFormat='HH:mm:ss.fff'}" 
                                             Width="100"/>
 
-                        <!-- 레벨 컬럼 -->
                         <DataGridTextColumn Header="레벨" 
                                             Binding="{Binding Level}" 
                                             Width="80">
+
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Style.Triggers>
+
                                         <Trigger Property="Text" Value="ERROR">
                                             <Setter Property="Foreground" Value="#FF6B6B"/>
+
                                             <Setter Property="FontWeight" Value="Bold"/>
                                         </Trigger>
+
                                         <Trigger Property="Text" Value="WARNING">
                                             <Setter Property="Foreground" Value="#FFB86C"/>
                                         </Trigger>
+
                                         <Trigger Property="Text" Value="INFO">
                                             <Setter Property="Foreground" Value="#8BE9FD"/>
+
                                         </Trigger>
                                         <Trigger Property="Text" Value="DEBUG">
+
                                             <Setter Property="Foreground" Value="#BD93F9"/>
                                         </Trigger>
                                     </Style.Triggers>
+
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
                         </DataGridTextColumn>
 
-                        <!-- 모듈 컬럼 -->
                         <DataGridTextColumn Header="모듈" 
                                             Binding="{Binding Module}" 
-                                            Width="120"/>
+                            
+                                 Width="120"/>
 
-                        <!-- 메서드 컬럼 -->
                         <DataGridTextColumn Header="메서드" 
-                                            Binding="{Binding Method}" 
+                               
+                             Binding="{Binding Method}" 
                                             Width="150"/>
 
-                        <!-- 메시지 컬럼 -->
                         <DataGridTextColumn Header="메시지" 
                                             Binding="{Binding Message}" 
-                                            Width="*"/>
+                                          
+                                 Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
             </Border>
 
-            <!-- 스플리터 -->
             <GridSplitter Grid.Column="1" 
-                          Width="5" 
+                      
+                         Width="5" 
                           HorizontalAlignment="Stretch" 
                           Background="#3F3F46"/>
 
-            <!-- 상세 정보 패널 -->
             <Border Grid.Column="2" Background="#252526" BorderBrush="#3F3F46" BorderThickness="1">
+
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10">
                     <StackPanel>
                         <TextBlock Text="📋 상세 정보" 
                                    Foreground="#FFFFFF" 
-                                   FontSize="14" 
+        
+                                           FontSize="14" 
                                    FontWeight="Bold" 
                                    Margin="0,0,0,10"/>
+
 
                         <TextBlock x:Name="txtDetailTime" 
                                    Foreground="#B0B0B0" 
                                    TextWrapping="Wrap" 
-                                   Margin="0,2"/>
+   
+                                         Margin="0,2"/>
 
                         <TextBlock x:Name="txtDetailLevel" 
                                    Foreground="#B0B0B0" 
-                                   TextWrapping="Wrap" 
+      
+                                          TextWrapping="Wrap" 
                                    Margin="0,2"/>
 
                         <TextBlock x:Name="txtDetailModule" 
-                                   Foreground="#B0B0B0" 
+         
+                                           Foreground="#B0B0B0" 
                                    TextWrapping="Wrap" 
                                    Margin="0,2"/>
+
 
                         <TextBlock x:Name="txtDetailMethod" 
                                    Foreground="#B0B0B0" 
                                    TextWrapping="Wrap" 
-                                   Margin="0,2"/>
+    
+                                         Margin="0,2"/>
 
                         <TextBlock x:Name="txtDetailMessage" 
                                    Foreground="#B0B0B0" 
-                                   TextWrapping="Wrap" 
+       
+                                             TextWrapping="Wrap" 
                                    Margin="0,10,0,2"/>
 
                         <TextBlock x:Name="txtDetailException" 
-                                   Foreground="#FF6B6B" 
+          
+                                          Foreground="#FF6B6B" 
                                    TextWrapping="Wrap" 
                                    FontFamily="Consolas" 
-                                   FontSize="11" 
+  
+                                           FontSize="11" 
                                    Margin="0,10,0,2"/>
                     </StackPanel>
+
                 </ScrollViewer>
             </Border>
         </Grid>
 
-        <!-- 상태바 -->
         <StatusBar Grid.Row="2" Background="#007ACC" Foreground="#FFFFFF">
             <StatusBar.ItemsPanel>
                 <ItemsPanelTemplate>
                     <Grid>
+
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
+
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
+
                     </Grid>
                 </ItemsPanelTemplate>
             </StatusBar.ItemsPanel>
 
-            <!-- 상태 메시지 (새로 추가) -->
             <StatusBarItem Grid.Column="0">
                 <TextBlock x:Name="txtStatusMessage" Text="시스템 준비" Margin="5,0"/>
             </StatusBarItem>
+
 
             <Separator Grid.Column="1" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" />
 
@@ -336,6 +387,7 @@
                 <StatusBarItem>
                     <TextBlock x:Name="txtLogCount" Text="로그 수: 0" Margin="10,0"/>
                 </StatusBarItem>
+
 
                 <Separator />
 
@@ -346,12 +398,14 @@
                 <Separator />
 
                 <StatusBarItem HorizontalContentAlignment="Stretch">
+
                     <TextBlock x:Name="txtStats" Text="통계: 로그 없음" Margin="10,0"/>
                 </StatusBarItem>
 
                 <StatusBarItem HorizontalAlignment="Right">
                     <TextBlock x:Name="txtLastUpdate" Text="마지막 업데이트: -" Margin="10,0"/>
                 </StatusBarItem>
+
             </StatusBar>
         </StatusBar>
     </Grid>
