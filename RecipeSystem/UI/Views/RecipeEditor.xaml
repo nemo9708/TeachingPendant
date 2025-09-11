@@ -168,10 +168,10 @@
                     </Border>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="icStepList">
-                            <ItemsControl.ItemTemplate>
+                        <ListBox x:Name="icStepList" SelectionChanged="icStepList_SelectionChanged">
+                            <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" 
+                                    <Border x:Name="bdStep" BorderBrush="LightGray" BorderThickness="0,0,0,1"
                                             Background="White" Padding="3,6">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -267,9 +267,19 @@
                                             </StackPanel>
                                         </Grid>
                                     </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter TargetName="bdStep" Property="Background" Value="LightBlue"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
                     </ScrollViewer>
                 </Grid>
             </Border>

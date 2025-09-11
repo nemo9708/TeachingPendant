@@ -139,6 +139,9 @@
     <Compile Include="RecipeSystem\UI\Converters\BoolToColorConverter.cs" />
     <Compile Include="RecipeSystem\UI\Converters\StepTypeToIconConverter.cs" />
     <Compile Include="RecipeSystem\UI\Intergration\RecipeRunnerIntegration.cs" />
+    <Compile Include="RecipeSystem\UI\Views\CoordinateEditWindow.xaml.cs">
+      <DependentUpon>CoordinateEditWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="RecipeSystem\UI\Views\ErrorLogViewer.xaml.cs">
       <DependentUpon>ErrorLogViewer.xaml</DependentUpon>
     </Compile>
@@ -229,6 +232,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Movement\MovementUI\PhysicsTestResultWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="RecipeSystem\UI\Views\CoordinateEditWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

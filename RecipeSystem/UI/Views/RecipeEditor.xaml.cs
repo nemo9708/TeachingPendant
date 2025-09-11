@@ -990,6 +990,21 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         }
         #endregion
 
+        #region Event Handlers - Step Selection
+        private void icStepList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                SelectedStep = icStepList.SelectedItem as RecipeStep;
+                UpdateStepDetailsPanel();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, "icStepList_SelectionChanged", "Failed to handle step selection", ex);
+            }
+        }
+        #endregion
+
         #region Event Handlers - Step List Actions
         /// <summary>
         /// 스텝 위로 이동 버튼
