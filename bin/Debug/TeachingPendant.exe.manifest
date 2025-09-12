@@ -54,14 +54,14 @@
     </dependentAssembly>
   </dependency>
   <dependency>
-    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="TeachingPendant.exe" size="1126360">
+    <dependentAssembly dependencyType="install" allowDelayedBinding="true" codebase="TeachingPendant.exe" size="1126872">
       <assemblyIdentity name="TeachingPendant" version="1.0.0.0" language="neutral" processorArchitecture="msil" />
       <hash>
         <dsig:Transforms>
           <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
         </dsig:Transforms>
         <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha256" />
-        <dsig:DigestValue>CS0lZZeMknBXau7GbvCqFHaHfPPQd2vkv1qAqk33M6c=</dsig:DigestValue>
+        <dsig:DigestValue>oH0WfPW1cPMNOKhZn6dJZ8xN/TD83cLAWuTew3X9HXk=</dsig:DigestValue>
       </hash>
     </dependentAssembly>
   </dependency>

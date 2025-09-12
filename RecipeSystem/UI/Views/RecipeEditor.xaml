@@ -4,7 +4,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:converters="clr-namespace:TeachingPendant.RecipeSystem.UI.Converters"
-             mc:Ignorable="d" 
+             xmlns:models="clr-namespace:TeachingPendant.RecipeSystem.Models"
+             mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1000"
              Background="LightGray">
 
@@ -131,7 +132,7 @@
                         <Button x:Name="btnSave" Content="Save" Width="60" Height="25" Margin="5,0"
                                 Click="btnSave_Click"/>
                         <Button x:Name="btnCoordEdit" Content="좌표편집" Width="70" Height="25" Margin="5,0"
-            Click="btnCoordEdit_Click"/>
+                                Click="btnCoordEdit_Click" IsEnabled="False"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -151,6 +152,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="150"/>
                                 <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="40"/>
                                 <ColumnDefinition Width="60"/>
                                 <ColumnDefinition Width="50"/>
                                 <ColumnDefinition Width="90"/>
@@ -161,9 +163,10 @@
                             <TextBlock Grid.Column="2" Text="Description" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
                             <TextBlock Grid.Column="3" Text="Teaching" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
                             <TextBlock Grid.Column="4" Text="Coords (R,θ,Z)" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
-                            <TextBlock Grid.Column="5" Text="Speed %" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
-                            <TextBlock Grid.Column="6" Text="Active" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
-                            <TextBlock Grid.Column="7" Text="Actions" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="5" Text="Src" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="6" Text="Speed %" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="7" Text="Active" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
+                            <TextBlock Grid.Column="8" Text="Actions" FontWeight="Bold" VerticalAlignment="Center" FontSize="11"/>
                         </Grid>
                     </Border>
 
@@ -180,6 +183,7 @@
                                                 <ColumnDefinition Width="*"/>
                                                 <ColumnDefinition Width="150"/>
                                                 <ColumnDefinition Width="120"/>
+                                                <ColumnDefinition Width="40"/>
                                                 <ColumnDefinition Width="60"/>
                                                 <ColumnDefinition Width="50"/>
                                                 <ColumnDefinition Width="90"/>
@@ -245,15 +249,20 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
 
-                                            <TextBox Grid.Column="5" Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}" 
+                                            <ComboBox Grid.Column="5" Width="35" SelectedValue="{Binding CoordinateSource}" SelectedValuePath="Tag" SelectionChanged="CoordinateSource_SelectionChanged">
+                                                <ComboBoxItem Content="S" Tag="{x:Static models:CoordinateSourceType.Setup}"/>
+                                                <ComboBoxItem Content="T" Tag="{x:Static models:CoordinateSourceType.Teaching}"/>
+                                            </ComboBox>
+
+                                            <TextBox Grid.Column="6" Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}"
                                                      VerticalAlignment="Center" HorizontalAlignment="Center" 
                                                      Width="45" TextAlignment="Center" FontWeight="SemiBold" FontSize="11"
                                                      PreviewTextInput="SpeedTextBox_PreviewTextInput"/>
 
-                                            <CheckBox Grid.Column="6" IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}" 
+                                            <CheckBox Grid.Column="7" IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"
                                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
 
-                                            <StackPanel Grid.Column="7" Orientation="Horizontal" 
+                                            <StackPanel Grid.Column="8" Orientation="Horizontal" 
                                                         VerticalAlignment="Center" HorizontalAlignment="Center">
                                                 <Button Content="↑" Width="22" Height="22" Margin="1" 
                                                         Click="btnMoveUp_Click" Tag="{Binding}" 
