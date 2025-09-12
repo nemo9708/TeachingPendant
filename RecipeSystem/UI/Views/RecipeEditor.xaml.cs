@@ -34,7 +34,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         private List<string> _availableTeachingGroups;
         private List<string> _availableTeachingLocations;
         private UserRole _currentUserRole;
-        private bool _isCoordinateEditMode = false;
         #endregion
 
         #region Public Properties - 기존 프로퍼티들
@@ -77,20 +76,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 _isModified = value;
                 OnPropertyChanged("IsModified");
                 UpdateModifiedIndicator();
-            }
-        }
-
-        /// <summary>
-        /// 좌표 편집 모드 여부
-        /// </summary>
-        public bool IsCoordinateEditMode
-        {
-            get { return _isCoordinateEditMode; }
-            set
-            {
-                _isCoordinateEditMode = value;
-                OnPropertyChanged("IsCoordinateEditMode");
-                // TODO: 나중에 UI 업데이트 메서드 추가
             }
         }
         #endregion
@@ -1393,27 +1378,9 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         }
         #endregion
 
-        #region Coordinate Editing - Step 1 (기본 구조만)
+        #region Coordinate Editing
         /// <summary>
-        /// 좌표 편집 모드 토글 (현재는 단순 상태 변경만)
-        /// </summary>
-        private void ToggleCoordinateEditMode()
-        {
-            try
-            {
-                IsCoordinateEditMode = !IsCoordinateEditMode;
-
-                Logger.Info(CLASS_NAME, "ToggleCoordinateEditMode",
-                    string.Format("좌표 편집 모드 변경: {0}", IsCoordinateEditMode));
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(CLASS_NAME, "ToggleCoordinateEditMode", "모드 변경 실패", ex);
-            }
-        }
-
-        /// <summary>
-        /// 좌표 편집 버튼 클릭 이벤트 (Step 1 - 기본 동작만)
+        /// 좌표 편집 버튼 클릭 이벤트
         /// </summary>
         private void btnCoordEdit_Click(object sender, RoutedEventArgs e)
         {
@@ -1425,21 +1392,19 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                         MessageBoxButton.OK, MessageBoxImage.Information);
                     return;
                 }
-
-                ToggleCoordinateEditMode();
-
-                // 현재 상태를 버튼 텍스트로 표시
-                var button = sender as Button;
-                if (button != null)
+                var editor = new CoordinateEditWindow(SelectedStep.TargetPosition)
                 {
-                    button.Content = IsCoordinateEditMode ? "편집종료" : "좌표편집";
-                    button.Background = IsCoordinateEditMode ?
-                        new SolidColorBrush(Colors.LightPink) :
-                        new SolidColorBrush(Colors.LightBlue);
-                }
+                    Owner = Window.GetWindow(this)
+                };
+                    if (editor.ShowDialog() == true)
+                    {
+                SelectedStep.TargetPosition = editor.EditedPosition;
+                IsModified = true;
 
                 Logger.Info(CLASS_NAME, "btnCoordEdit_Click",
-                    string.Format("좌표 편집 버튼 클릭됨. 모드: {0}", IsCoordinateEditMode));
+                    string.Format("좌표 편집 적용 - Step {0}: {1}",
+                        SelectedStep.StepNumber, editor.EditedPosition));
+                 }
             }
             catch (Exception ex)
             {
@@ -1447,7 +1412,7 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 MessageBox.Show("오류가 발생했습니다: " + ex.Message, "오류",
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
+}
         #endregion
     }
 }

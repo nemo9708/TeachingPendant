@@ -59,3 +59,5 @@ C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\VirtualKey
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\VirtualKeyboard\VirtualKeyboard.g.cs
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\ErrorLogViewer.baml
 C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\ErrorLogViewer.g.cs
+C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\CoordinateEditWindow.baml
+C:\Users\jun_jihan\source\repos\MVVP2\MVVP2\TeachingPendant\obj\Debug\RecipeSystem\UI\Views\CoordinateEditWindow.g.cs
