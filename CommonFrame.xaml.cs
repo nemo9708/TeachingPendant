@@ -345,6 +345,19 @@ namespace TeachingPendant
             AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION, $"Switched to {screenName} screen");
         }
 
+        /// <summary>
+        /// Recipe Editor로 이동 후 지정된 스텝 선택
+        /// </summary>
+        /// <param name="stepNumber">선택할 스텝 번호</param>
+        public void NavigateToRecipeEditor(int stepNumber = 1)
+        {
+            SwitchToScreen("RecipeEditor");
+            if (MainContentArea.Content is RecipeEditor editor)
+            {
+                editor.SelectStep(stepNumber);
+            }
+        }
+
         private void UpdateBottomButtonsForCurrentScreen()
         {
             if (BottomButtonGrid == null) return;
@@ -395,6 +408,11 @@ namespace TeachingPendant
                 btn3.Content = "I/O";  // Monitor에서는 I/O로 변경
                 btn3.Click += IOButton_Click;
             }
+            else if (_currentScreenName == "RecipeEditor" || _currentScreenName == "Movement")
+            {
+                btn3.Content = "Teaching";  // RecipeEditor와 Movement에서 Teaching 버튼 표시
+                btn3.Click += TeachingButton_Click;
+            }
             else
             {
                 btn3.Content = "Mode";  // 다른 화면에서는 기존 Mode 유지
@@ -407,6 +425,11 @@ namespace TeachingPendant
             {
                 btn4.Content = "Remote";
                 btn4.Click += RemoteButton_Click;
+            }
+            else if (_currentScreenName == "RecipeEditor" || _currentScreenName == "Movement")
+            {
+                btn4.Content = "Setup";  // RecipeEditor와 Movement에서 Setup 버튼 표시
+                btn4.Click += SetupButton_Click;
             }
             else
             {
@@ -529,6 +552,8 @@ namespace TeachingPendant
         private void SettingSpeedParaButton_Click(object sender, RoutedEventArgs e) { new SpeedParameterWindow { Owner = this }.ShowDialog(); }
         private void ModeButton_Click(object sender, RoutedEventArgs e) { /* To be implemented */ }
         private void CalculatorButton_Click(object sender, RoutedEventArgs e) { /* To be implemented */ }
+        private void TeachingButton_Click(object sender, RoutedEventArgs e) { SwitchToScreen("Teaching"); }
+        private void SetupButton_Click(object sender, RoutedEventArgs e) { SwitchToScreen("Setting"); }
         private void SettingLimitStatusButton_Click(object sender, RoutedEventArgs e) { /* To be implemented */ }
         #endregion
 

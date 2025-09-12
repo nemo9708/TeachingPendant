@@ -9,12 +9,14 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using TeachingPendant.RecipeSystem.Models;
+using TeachingPendant.HardwareControllers;
 using TeachingPendant.RecipeSystem.Storage;
 using TeachingPendant.RecipeSystem.Teaching;
 using TeachingPendant.UserManagement.Models;
 using TeachingPendant.UserManagement.Services;
 using TeachingPendant.Logging;
 using TeachingPendant.Alarm;
+using TeachingPendant.SetupUI;
 
 namespace TeachingPendant.RecipeSystem.UI.Views
 {
@@ -34,7 +36,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         private List<string> _availableTeachingGroups;
         private List<string> _availableTeachingLocations;
         private UserRole _currentUserRole;
-        private bool _isCoordinateEditMode = false;
         #endregion
 
         #region Public Properties - 기존 프로퍼티들
@@ -80,19 +81,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
             }
         }
 
-        /// <summary>
-        /// 좌표 편집 모드 여부
-        /// </summary>
-        public bool IsCoordinateEditMode
-        {
-            get { return _isCoordinateEditMode; }
-            set
-            {
-                _isCoordinateEditMode = value;
-                OnPropertyChanged("IsCoordinateEditMode");
-                // TODO: 나중에 UI 업데이트 메서드 추가
-            }
-        }
         #endregion
 
         #region Constructor
@@ -123,6 +111,10 @@ namespace TeachingPendant.RecipeSystem.UI.Views
 
                 // 기본 레시피 생성 (편집기 시작 시)
                 CreateNewRecipe();
+
+                // Setup의 HomePos 변경 시 첫 번째 스텝 좌표 갱신
+                Setup.HomePosChanged += Setup_HomePosChanged;
+                this.Unloaded += (s, e) => Setup.HomePosChanged -= Setup_HomePosChanged;
 
                 // 초기 상태 설정
                 IsModified = false;
@@ -316,7 +308,14 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 _currentRecipe = new TransferRecipe("New Recipe", "Custom user recipe");
 
                 // 기본 스텝들 추가
-                _currentRecipe.AddStep(new RecipeStep(StepType.Home, "Start - Move to Home"));
+                var homeStep = new RecipeStep(StepType.Home, "Start - Move to Home")
+                {
+                    CoordinateSource = CoordinateSourceType.Setup,
+                    TargetPosition = new Position((double)Setup.HomePosA,
+                                                  (double)Setup.HomePosT,
+                                                  (double)Setup.HomePosZ)
+                };
+                _currentRecipe.AddStep(homeStep);
                 _currentRecipe.AddStep(new RecipeStep(StepType.CheckSafety, "Check safety status"));
 
                 LoadRecipeForEditing();
@@ -370,6 +369,19 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 if (_currentRecipe == null) return;
 
                 var newStep = new RecipeStep(stepType, GetDefaultDescription(stepType));
+
+                // 기본 좌표 출처 설정
+                if (stepType == StepType.Home)
+                {
+                    newStep.CoordinateSource = CoordinateSourceType.Setup;
+                    newStep.TargetPosition = new Position((double)Setup.HomePosA,
+                                                          (double)Setup.HomePosT,
+                                                          (double)Setup.HomePosZ);
+                }
+                else
+                {
+                    newStep.CoordinateSource = CoordinateSourceType.Teaching;
+                }
 
                 // Teaching 정보 자동 설정
                 if (cmbTeachingGroup.SelectedItem != null)
@@ -598,6 +610,24 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         }
 
         /// <summary>
+        /// 현재 스텝이 좌표 편집을 지원하는지 여부 반환
+        /// </summary>
+        private bool CanEditCoordinates(RecipeStep step)
+        {
+            if (step == null) return false;
+
+            switch (step.Type)
+            {
+                case StepType.Move:
+                case StepType.Pick:
+                case StepType.Place:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
         /// 스텝 세부 정보 패널 업데이트
         /// </summary>
         private void UpdateStepDetailsPanel()
@@ -612,11 +642,15 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                     txtSelectedStepType.Text = SelectedStep.Type.ToString();
                     cmbStepTeachingGroup.SelectedItem = SelectedStep.TeachingGroupName;
                     cmbStepTeachingLocation.SelectedItem = SelectedStep.TeachingLocationName;
+
+                    btnCoordEdit.IsEnabled = CanEditCoordinates(SelectedStep);
                 }
                 else
                 {
                     grdStepDetails.Visibility = Visibility.Collapsed;
                     txtNoStepSelected.Visibility = Visibility.Visible;
+
+                    btnCoordEdit.IsEnabled = false;
                 }
             }
             catch (Exception ex)
@@ -1393,27 +1427,87 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         }
         #endregion
 
-        #region Coordinate Editing - Step 1 (기본 구조만)
+        #region Coordinate Source Handling
         /// <summary>
-        /// 좌표 편집 모드 토글 (현재는 단순 상태 변경만)
+        /// 지정된 번호의 스텝을 선택
         /// </summary>
-        private void ToggleCoordinateEditMode()
+        public void SelectStep(int stepNumber)
         {
             try
             {
-                IsCoordinateEditMode = !IsCoordinateEditMode;
-
-                Logger.Info(CLASS_NAME, "ToggleCoordinateEditMode",
-                    string.Format("좌표 편집 모드 변경: {0}", IsCoordinateEditMode));
+                var step = _currentRecipe?.Steps?.FirstOrDefault(s => s.StepNumber == stepNumber);
+                if (step != null)
+                {
+                    icStepList.SelectedItem = step;
+                    icStepList.ScrollIntoView(step);
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error(CLASS_NAME, "ToggleCoordinateEditMode", "모드 변경 실패", ex);
+                Logger.Error(CLASS_NAME, nameof(SelectStep), "Failed to select step", ex);
             }
         }
 
         /// <summary>
-        /// 좌표 편집 버튼 클릭 이벤트 (Step 1 - 기본 동작만)
+        /// 좌표 출처(S/T) 변경 시 호출
+        /// </summary>
+        private void CoordinateSource_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            try
+            {
+                if (sender is ComboBox combo && combo.DataContext is RecipeStep step &&
+                    combo.SelectedValue is CoordinateSourceType source)
+                {
+                    step.CoordinateSource = source;
+                    if (source == CoordinateSourceType.Setup)
+                    {
+                        step.TargetPosition = new Position((double)Setup.HomePosA,
+                                                           (double)Setup.HomePosT,
+                                                           (double)Setup.HomePosZ);
+                    }
+                    else
+                    {
+                        step.LoadCoordinatesFromTeaching();
+                    }
+                    icStepList.Items.Refresh();
+                    IsModified = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, nameof(CoordinateSource_SelectionChanged), "Failed to change coordinate source", ex);
+            }
+        }
+
+        /// <summary>
+        /// Setup에서 HomePos가 변경되면 첫 번째 스텝 좌표 업데이트
+        /// </summary>
+        private void Setup_HomePosChanged(object sender, HomePosChangedEventArgs e)
+        {
+            try
+            {
+                if (_currentRecipe?.Steps?.Count > 0)
+                {
+                    var firstStep = _currentRecipe.Steps[0];
+                    if (firstStep.CoordinateSource == CoordinateSourceType.Setup)
+                    {
+                        firstStep.TargetPosition = new Position((double)e.PositionA,
+                                                                (double)e.PositionT,
+                                                                (double)e.PositionZ);
+                        icStepList.Items.Refresh();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, nameof(Setup_HomePosChanged), "Failed to update HomePos", ex);
+            }
+        }
+        #endregion
+
+        #region Coordinate Editing
+        /// <summary>
+        /// 좌표 편집 버튼 클릭 이벤트
         /// </summary>
         private void btnCoordEdit_Click(object sender, RoutedEventArgs e)
         {
@@ -1426,20 +1520,28 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                     return;
                 }
 
-                ToggleCoordinateEditMode();
-
-                // 현재 상태를 버튼 텍스트로 표시
-                var button = sender as Button;
-                if (button != null)
+                if (!CanEditCoordinates(SelectedStep))
                 {
-                    button.Content = IsCoordinateEditMode ? "편집종료" : "좌표편집";
-                    button.Background = IsCoordinateEditMode ?
-                        new SolidColorBrush(Colors.LightPink) :
-                        new SolidColorBrush(Colors.LightBlue);
+                    MessageBox.Show("선택한 스텝에서는 좌표를 편집할 수 없습니다.", "알림",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
                 }
 
-                Logger.Info(CLASS_NAME, "btnCoordEdit_Click",
-                    string.Format("좌표 편집 버튼 클릭됨. 모드: {0}", IsCoordinateEditMode));
+                var editor = new CoordinateEditWindow(SelectedStep.TargetPosition)
+                {
+                    Owner = Window.GetWindow(this)
+                };
+
+                if (editor.ShowDialog() == true)
+                {
+                    SelectedStep.TargetPosition = editor.EditedPosition;
+                    icStepList.Items.Refresh();
+                    IsModified = true;
+
+                    Logger.Info(CLASS_NAME, "btnCoordEdit_Click",
+                        string.Format("좌표 편집 적용 - Step {0}: {1}",
+                            SelectedStep.StepNumber, editor.EditedPosition));
+                }
             }
             catch (Exception ex)
             {

@@ -236,6 +236,10 @@
 
             <!-- 하단 버튼들 -->
             <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button Content="Teaching" Width="70" Height="25" Margin="2"
+                        BorderBrush="Gray" BorderThickness="1" Click="Teaching_Click"/>
+                <Button Content="Setup" Width="70" Height="25" Margin="2"
+                        BorderBrush="Gray" BorderThickness="1" Click="Setting_Click"/>
                 <Button x:Name="btnLogin" Content="Login" Width="70" Height="25" Margin="2"
                         BorderBrush="Blue" BorderThickness="2" Background="LightBlue"
                         Click="Login_Click"/>
