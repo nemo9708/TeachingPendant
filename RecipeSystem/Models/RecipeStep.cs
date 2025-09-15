@@ -7,6 +7,17 @@ using TeachingPendant.HardwareControllers;
 namespace TeachingPendant.RecipeSystem.Models
 {
     /// <summary>
+    /// 스텝 좌표의 출처를 표시
+    /// </summary>
+    public enum CoordinateSourceType
+    {
+        /// <summary>Setup 화면의 HomePos 좌표</summary>
+        Setup,
+        /// <summary>Teaching 화면에서 불러온 좌표</summary>
+        Teaching
+    }
+
+    /// <summary>
     /// 레시피의 개별 실행 스텝
     /// 로봇의 각 동작(이동, Pick, Place 등)을 정의
     /// </summary>
@@ -21,6 +32,7 @@ namespace TeachingPendant.RecipeSystem.Models
         private int _speed = 50;
         private double _estimatedDuration = 1.0;
         private Dictionary<string, object> _parameters = new Dictionary<string, object>();
+        private CoordinateSourceType _coordinateSource = CoordinateSourceType.Teaching;
         #endregion
 
         #region Public Properties
@@ -163,6 +175,22 @@ namespace TeachingPendant.RecipeSystem.Models
         /// Teaching UI에서 참조할 위치명 (선택사항, 예: "P1", "P2")
         /// </summary>
         public string TeachingLocationName { get; set; } = "";
+
+        /// <summary>
+        /// 현재 좌표가 어떤 출처에서 왔는지(S: Setup, T: Teaching)
+        /// </summary>
+        public CoordinateSourceType CoordinateSource
+        {
+            get => _coordinateSource;
+            set
+            {
+                if (_coordinateSource != value)
+                {
+                    _coordinateSource = value;
+                    OnPropertyChanged(nameof(CoordinateSource));
+                }
+            }
+        }
 
         /// <summary>
         /// 스텝 생성 시간

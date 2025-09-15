@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using TeachingPendant.Alarm;
 using TeachingPendant.Manager;
+using System.Linq;
+using TeachingPendant;
 
 namespace TeachingPendant.SetupUI
 {
@@ -418,6 +420,8 @@ namespace TeachingPendant.SetupUI
             {
                 ApplyHomePosToMovementP1();
             }
+            var frame = Application.Current?.Windows.OfType<CommonFrame>().FirstOrDefault();
+            frame?.NavigateToRecipeEditor(1);
         }
 
         private void ApplyHomePos_Click(object sender, RoutedEventArgs e)

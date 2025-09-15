@@ -345,6 +345,19 @@ namespace TeachingPendant
             AlarmMessageManager.ShowAlarm(Alarms.USER_ACTION, $"Switched to {screenName} screen");
         }
 
+        /// <summary>
+        /// Recipe Editor로 이동 후 지정된 스텝 선택
+        /// </summary>
+        /// <param name="stepNumber">선택할 스텝 번호</param>
+        public void NavigateToRecipeEditor(int stepNumber = 1)
+        {
+            SwitchToScreen("RecipeEditor");
+            if (MainContentArea.Content is RecipeEditor editor)
+            {
+                editor.SelectStep(stepNumber);
+            }
+        }
+
         private void UpdateBottomButtonsForCurrentScreen()
         {
             if (BottomButtonGrid == null) return;

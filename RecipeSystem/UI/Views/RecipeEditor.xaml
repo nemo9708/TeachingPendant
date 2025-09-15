@@ -250,7 +250,7 @@
                                             </TextBlock>
 
                                             <ComboBox Grid.Column="5" Width="35" SelectedValue="{Binding CoordinateSource}" SelectedValuePath="Tag" SelectionChanged="CoordinateSource_SelectionChanged">
-                                                <ComboBoxItem Content="S" Tag="{x:Static models:CoordinateSourceType.Setup}"/>
+                                                <ComboBoxItem Content="S" Tag="{x:Static models:CoordinatestatusSourceType.Setup}"/>
                                                 <ComboBoxItem Content="T" Tag="{x:Static models:CoordinateSourceType.Teaching}"/>
                                             </ComboBox>
 
