@@ -1452,10 +1452,27 @@ namespace TeachingPendant.RecipeSystem.UI.Views
         {
             try
             {
-                if (sender is ComboBox combo && combo.DataContext is RecipeStep step &&
-                    combo.SelectedValue is CoordinateSourceType source)
+                if (sender is ComboBox combo && combo.DataContext is RecipeStep step)
                 {
-                    step.CoordinateSource = source;
+                    CoordinateSourceType source;
+                    if (combo.SelectedValue is CoordinateSourceType enumValue)
+                    {
+                        source = enumValue;
+                    }
+                    else if (combo.SelectedValue is string text &&
+                             Enum.TryParse(text, out CoordinateSourceType parsed))
+                    {
+                        source = parsed;
+                    }
+                    else
+                    {
+                        return;
+                    }
+
+                    if (step.CoordinateSource != source)
+                    {
+                        step.CoordinateSource = source;
+                    }
                     if (source == CoordinateSourceType.Setup)
                     {
                         step.TargetPosition = new Position((double)Setup.HomePosA,

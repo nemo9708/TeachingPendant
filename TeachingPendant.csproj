@@ -137,6 +137,7 @@
     <Compile Include="RecipeSystem\Test\RecipeRunnerTestHelper.cs" />
     <Compile Include="RecipeSystem\Test\RecipeSystemTestHelper.cs" />
     <Compile Include="RecipeSystem\UI\Converters\BoolToColorConverter.cs" />
+    <Compile Include="RecipeSystem\UI\Converters\CoordinateSourceTypeToStringConverter.cs" />
     <Compile Include="RecipeSystem\UI\Converters\StepTypeToIconConverter.cs" />
     <Compile Include="RecipeSystem\UI\Intergration\RecipeRunnerIntegration.cs" />
     <Compile Include="RecipeSystem\UI\Views\CoordinateEditWindow.xaml.cs">

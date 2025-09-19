@@ -4,13 +4,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:converters="clr-namespace:TeachingPendant.RecipeSystem.UI.Converters"
-             xmlns:models="clr-namespace:TeachingPendant.RecipeSystem.Models"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="1000"
              Background="LightGray">
 
     <UserControl.Resources>
         <converters:StepTypeToIconConverter x:Key="StepTypeToIconConverter"/>
+        <converters:CoordinateSourceTypeToStringConverter x:Key="CoordinateSourceTypeToStringConverter"/>
     </UserControl.Resources>
 
     <Grid Margin="5">
@@ -249,9 +249,12 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
 
-                                            <ComboBox Grid.Column="5" Width="35" SelectedValue="{Binding CoordinateSource}" SelectedValuePath="Tag" SelectionChanged="CoordinateSource_SelectionChanged">
-                                                <ComboBoxItem Content="S" Tag="{x:Static models:CoordinatestatusSourceType.Setup}"/>
-                                                <ComboBoxItem Content="T" Tag="{x:Static models:CoordinateSourceType.Teaching}"/>
+                                            <ComboBox Grid.Column="5" Width="35"
+                                                      SelectedValue="{Binding CoordinateSource, Mode=TwoWay, Converter={StaticResource CoordinateSourceTypeToStringConverter}}"
+                                                      SelectedValuePath="Tag"
+                                                      SelectionChanged="CoordinateSource_SelectionChanged">
+                                                <ComboBoxItem Content="S" Tag="Setup"/>
+                                                <ComboBoxItem Content="T" Tag="Teaching"/>
                                             </ComboBox>
 
                                             <TextBox Grid.Column="6" Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}"
