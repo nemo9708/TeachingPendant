@@ -1483,7 +1483,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                     {
                         step.LoadCoordinatesFromTeaching();
                     }
-                    icStepList.Items.Refresh();
                     IsModified = true;
                 }
             }
@@ -1548,7 +1547,6 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 if (editor.ShowDialog() == true)
                 {
                     SelectedStep.TargetPosition = editor.EditedPosition;
-                    icStepList.Items.Refresh();
                     IsModified = true;
 
                     Logger.Info(CLASS_NAME, "btnCoordEdit_Click",
