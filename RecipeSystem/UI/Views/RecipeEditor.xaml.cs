@@ -7,7 +7,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Runtime.InteropServices;
 using TeachingPendant.RecipeSystem.Models;
 using TeachingPendant.HardwareControllers;
 using TeachingPendant.RecipeSystem.Storage;
@@ -17,6 +19,8 @@ using TeachingPendant.UserManagement.Services;
 using TeachingPendant.Logging;
 using TeachingPendant.Alarm;
 using TeachingPendant.SetupUI;
+using System.Diagnostics;
+using System.IO;
 
 namespace TeachingPendant.RecipeSystem.UI.Views
 {
@@ -1347,6 +1351,153 @@ namespace TeachingPendant.RecipeSystem.UI.Views
                 e.Handled = true;
             }
         }
+
+        private void SpeedTextBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            EnsureTouchKeyboardVisible();
+        }
+
+        private void SpeedTextBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            EnsureTouchKeyboardVisible();
+        }
+
+        private void SpeedTextBox_PreviewTouchDown(object sender, TouchEventArgs e)
+        {
+            EnsureTouchKeyboardVisible();
+        }
+
+        private void EnsureTouchKeyboardVisible()
+        {
+            try
+            {
+                if (TryToggleTouchKeyboard())
+                {
+                    return;
+                }
+
+                if (TryStartTouchKeyboardProcess())
+                {
+                    return;
+                }
+
+                Logger.Warning(CLASS_NAME, nameof(EnsureTouchKeyboardVisible),
+                    "Windows touch keyboard (TabTip) could not be started.", showInUI: false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(CLASS_NAME, nameof(EnsureTouchKeyboardVisible), "Failed to launch touch keyboard", ex);
+            }
+        }
+
+        private bool TryToggleTouchKeyboard()
+        {
+            ITipInvocation tipInvocation = null;
+
+            try
+            {
+                tipInvocation = (ITipInvocation)new TipInvocation();
+
+                var windowHandle = IntPtr.Zero;
+                if (Application.Current?.MainWindow != null)
+                {
+                    windowHandle = new WindowInteropHelper(Application.Current.MainWindow).Handle;
+                }
+
+                tipInvocation.Toggle(windowHandle);
+                return true;
+            }
+            catch (COMException comEx)
+            {
+                Logger.Warning(CLASS_NAME, nameof(TryToggleTouchKeyboard),
+                    $"COM exception while toggling touch keyboard: {comEx.Message}", showInUI: false);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(CLASS_NAME, nameof(TryToggleTouchKeyboard),
+                    $"Failed to toggle touch keyboard via COM: {ex.Message}", showInUI: false);
+            }
+            finally
+            {
+                if (tipInvocation != null && Marshal.IsComObject(tipInvocation))
+                {
+                    Marshal.ReleaseComObject(tipInvocation);
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryStartTouchKeyboardProcess()
+        {
+            var executableNames = new[] { "TabTip.exe", "TabTip32.exe" };
+            var searchRoots = new[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonProgramFilesX86),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86)
+            };
+
+            foreach (var root in searchRoots.Where(path => !string.IsNullOrWhiteSpace(path)))
+            {
+                foreach (var executable in executableNames)
+                {
+                    var candidate = Path.Combine(root, "microsoft shared", "ink", executable);
+                    if (File.Exists(candidate) && StartProcess(candidate))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            foreach (var executable in executableNames)
+            {
+                if (StartProcess(executable))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool StartProcess(string fileName)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = fileName,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(CLASS_NAME, nameof(StartProcess),
+                    $"Failed to start '{fileName}': {ex.Message}", showInUI: false);
+                return false;
+            }
+        }
+
+        [ComImport]
+        [Guid("37C994E7-432B-4834-A2F7-DCE1F13B834B")]
+        [ClassInterface(ClassInterfaceType.None)]
+        private class TipInvocation
+        {
+        }
+
+        [ComImport]
+        [Guid("34745C63-B2F0-4784-8B67-5E12C8701A31")]
+        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        private interface ITipInvocation
+        {
+            void Toggle(IntPtr hwnd);
+        }
+
 
 
         /// <summary>

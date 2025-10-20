@@ -260,7 +260,11 @@
                                             <TextBox Grid.Column="6" Text="{Binding Speed, UpdateSourceTrigger=PropertyChanged}"
                                                      VerticalAlignment="Center" HorizontalAlignment="Center" 
                                                      Width="45" TextAlignment="Center" FontWeight="SemiBold" FontSize="11"
-                                                     PreviewTextInput="SpeedTextBox_PreviewTextInput"/>
+                                                     PreviewTextInput="SpeedTextBox_PreviewTextInput"
+                                                     GotFocus="SpeedTextBox_GotFocus"
+                                                     PreviewMouseDown="SpeedTextBox_PreviewMouseDown"
+                                                     PreviewTouchDown="SpeedTextBox_PreviewTouchDown"/>
+
 
                                             <CheckBox Grid.Column="7" IsChecked="{Binding IsEnabled, UpdateSourceTrigger=PropertyChanged}"
                                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
